@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>👁️ ระบบตาวิเศษ - หนองสำโรงวิทยา</title>
+  <?!= include('favicon'); ?>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); min-height: 100vh; }
+    @keyframes pulse-green { 0%,100% { opacity:1 } 50% { opacity:.5 } }
+    .pulse-dot { animation: pulse-green 1.5s infinite; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast { animation: slideIn .3s ease-out; }
+    .spinner { border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .tab-btn { transition: all .2s; }
+    .tab-btn.active { background: white; color: #047857; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+    .student-card { transition: all .2s; }
+    .student-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-xl p-8 flex flex-col items-center gap-3">
+    <div class="spinner border-emerald-500"></div>
+    <p class="text-gray-700 font-medium" id="loadingText">กำลังโหลด...</p>
+  </div>
+</div>
+<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<div class="container mx-auto px-4 py-4 max-w-7xl">
+
+  <!-- Header -->
+  <div class="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-4 mb-4">
+    <div class="flex justify-between items-center mb-2">
+      <button onclick="goHome()" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium">← กลับหน้าหลัก</button>
+      <div class="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full pulse-dot"></span>
+        <span class="text-emerald-700 text-xs font-medium">☁️ เชื่อมต่อกับ Google Sheets</span>
+      </div>
+    </div>
+    <div class="text-center">
+      <h1 class="text-xl md:text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+        👁️ ระบบตาวิเศษ
+      </h1>
+      <p class="text-gray-600 text-xs md:text-sm mt-1">รักษาความสะอาดและสิ่งแวดล้อม | โรงเรียนหนองสำโรงวิทยา</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="bg-white/20 backdrop-blur rounded-2xl p-2 mb-4 flex gap-1 overflow-x-auto">
+    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active flex-shrink-0 px-3 py-2 rounded-xl text-sm text-white whitespace-nowrap">📊 แดชบอร์ด</button>
+    <button onclick="switchTab('report')" id="tab-report" class="tab-btn flex-shrink-0 px-3 py-2 rounded-xl text-sm text-white whitespace-nowrap">📝 แจ้งเหตุ</button>
+    <button onclick="switchTab('search')" id="tab-search" class="tab-btn flex-shrink-0 px-3 py-2 rounded-xl text-sm text-white whitespace-nowrap">🔍 รายการ</button>
+    <button onclick="switchTab('awards')" id="tab-awards" class="tab-btn flex-shrink-0 px-3 py-2 rounded-xl text-sm text-white whitespace-nowrap">🏆 ทำเนียบ</button>
+  </div>
+
+  <!-- ========== DASHBOARD ========== -->
+  <div id="tab-content-dashboard" class="tab-content">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="bg-white/95 rounded-xl p-3 text-center"><p class="text-xs text-gray-600">รายงานทั้งหมด</p><p id="statTotal" class="text-2xl font-bold text-emerald-600">0</p></div>
+      <div class="bg-white/95 rounded-xl p-3 text-center"><p class="text-xs text-gray-600">วันนี้</p><p id="statToday" class="text-2xl font-bold text-blue-600">0</p></div>
+      <div class="bg-white/95 rounded-xl p-3 text-center"><p class="text-xs text-gray-600">ผู้แจ้งทั้งหมด</p><p id="statReporters" class="text-2xl font-bold text-purple-600">0</p></div>
+      <div class="bg-white/95 rounded-xl p-3 text-center"><p class="text-xs text-gray-600">ผู้ทำผิด</p><p id="statOffenders" class="text-2xl font-bold text-red-600">0</p></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white/95 rounded-2xl shadow-xl p-4">
+        <h3 class="font-bold text-gray-800 mb-3">🌟 Top ผู้แจ้งเหตุ</h3>
+        <div id="topReporters"></div>
+      </div>
+      <div class="bg-white/95 rounded-2xl shadow-xl p-4">
+        <h3 class="font-bold text-gray-800 mb-3">⚠️ Top ผู้ทำผิด</h3>
+        <div id="topOffenders"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== REPORT ========== -->
+  <div id="tab-content-report" class="tab-content hidden">
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-4 md:p-6">
+      <h2 class="text-lg font-bold text-gray-800 mb-3">📝 แจ้งเหตุ</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">📅 วันที่</label>
+          <input type="date" id="reportDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">📍 จุดที่พบ</label>
+          <input type="text" id="reportLocation" placeholder="เช่น หน้าห้องสมุด, โรงอาหาร" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+        </div>
+      </div>
+
+      <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3">
+        <h3 class="font-semibold text-emerald-700 mb-2">🌟 ผู้แจ้งเหตุ (+1 คะแนน)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <select id="reporterClass" onchange="updateStudentList('reporter')" class="px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">-- เลือกชั้น --</option>
+          </select>
+          <select id="reporterId" class="px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">-- เลือกนักเรียน --</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+        <h3 class="font-semibold text-red-700 mb-2">⚠️ ผู้ทำผิด (-1 คะแนน)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <select id="offenderClass" onchange="updateStudentList('offender')" class="px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">-- เลือกชั้น --</option>
+          </select>
+          <select id="offenderId" class="px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">-- เลือกนักเรียน --</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">🗑️ ประเภทขยะ/พฤติกรรม</label>
+          <select id="reportTrashType" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">-- เลือก --</option>
+            <option value="ขยะทั่วไป">ขยะทั่วไป</option>
+            <option value="ขยะรีไซเคิล">ขยะรีไซเคิล</option>
+            <option value="เศษอาหาร">เศษอาหาร</option>
+            <option value="ขยะอันตราย">ขยะอันตราย</option>
+            <option value="การทำลายของส่วนรวม">การทำลายของส่วนรวม</option>
+            <option value="อื่นๆ">อื่นๆ</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">📸 รูปภาพ (ไม่บังคับ)</label>
+          <input type="file" id="reportImage" accept="image/*" class="w-full text-sm">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-sm font-semibold text-gray-700 mb-1">📝 รายละเอียด</label>
+        <textarea id="reportDetails" rows="3" placeholder="อธิบายเหตุการณ์..." class="w-full px-3 py-2 border border-gray-300 rounded-lg"></textarea>
+      </div>
+
+      <button onclick="submitReport()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3 rounded-xl shadow-lg">
+        ✅ บันทึกรายงาน
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== SEARCH ========== -->
+  <div id="tab-content-search" class="tab-content hidden">
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-4 md:p-6">
+      <div class="flex flex-wrap gap-2 mb-3">
+        <input type="text" id="searchQuery" placeholder="🔍 ค้นหา ชื่อ/จุด/รายละเอียด" oninput="renderSearch()" class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg">
+        <select id="searchClass" onchange="renderSearch()" class="px-3 py-2 border border-gray-300 rounded-lg">
+          <option value="">ทุกชั้น (ผู้ทำผิด)</option>
+        </select>
+        <button onclick="exportReports()" class="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">📊 Export Excel</button>
+      </div>
+      <div id="searchList"></div>
+    </div>
+  </div>
+
+  <!-- ========== AWARDS ========== -->
+  <div id="tab-content-awards" class="tab-content hidden">
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-4 md:p-6">
+      <h2 class="text-lg font-bold text-gray-800 mb-3">🏆 ทำเนียบเกียรติยศ</h2>
+      <p class="text-sm text-gray-600 mb-3">นักเรียนที่ช่วยรักษาความสะอาด มีคะแนนสะสมสูงสุด</p>
+      <div id="awardsList"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center text-white/90 text-xs mt-6 pb-4">
+    <p class="mb-1">© พัฒนาโดย ครูรุ่งนิรันดร์ | สำหรับใช้ภายในโรงเรียนหนองสำโรงวิทยาเท่านั้น</p>
+    <p>ห้ามทำซ้ำ ดัดแปลง เพื่อการพาณิชย์ หรือแอบอ้างเป็นผลงานตนเองโดยเด็ดขาด</p>
+  </footer>
+
+</div>
+
+<script>
+let allStudents = [], allReports = [], webAppUrl = '';
+let pendingImage = null;
+
+function showLoading(t) {
+  document.getElementById('loadingText').textContent = t || 'กำลังโหลด...';
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+function toast(msg, type) {
+  type = type || 'success';
+  const colors = { success: 'bg-emerald-500', error: 'bg-red-500', info: 'bg-blue-500', warn: 'bg-amber-500' };
+  const el = document.createElement('div');
+  el.className = `toast ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg text-sm max-w-xs`;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+function goHome() {
+  if (webAppUrl) window.open(webAppUrl, '_top');
+  else toast('ยังโหลด URL ไม่เสร็จ', 'warn');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-content-' + name).classList.remove('hidden');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'search') renderSearch();
+  if (name === 'awards') renderAwards();
+}
+
+function loadAll() {
+  showLoading('โหลดข้อมูล...');
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+      webAppUrl = data.webAppUrl || '';
+      allStudents = data.students || [];
+      allReports = data.reports || [];
+      populateClassDropdowns();
+      document.getElementById('reportDate').value = new Date().toISOString().slice(0, 10);
+      renderDashboard();
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      toast('โหลดข้อมูลล้มเหลว: ' + err.message, 'error');
+    })
+    .getAllInitialData('magiceye');
+}
+
+function populateClassDropdowns() {
+  const classes = [...new Set(allStudents.map(s => s.classLevel).filter(Boolean))].sort();
+  ['reporterClass', 'offenderClass', 'searchClass'].forEach(id => {
+    const sel = document.getElementById(id);
+    const first = sel.options[0].outerHTML;
+    sel.innerHTML = first + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+  });
+}
+
+function updateStudentList(role) {
+  const clsSel = document.getElementById(role + 'Class');
+  const stuSel = document.getElementById(role + 'Id');
+  const cls = clsSel.value;
+  if (!cls) { stuSel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>'; return; }
+  const students = allStudents.filter(s => s.classLevel === cls).sort((a, b) => Number(a.no || 0) - Number(b.no || 0));
+  stuSel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>' + students.map(s =>
+    `<option value="${s.id}">เลขที่ ${s.no || '-'} ${s.fullName || (s.firstName + ' ' + s.lastName)}</option>`
+  ).join('');
+}
+
+function submitReport() {
+  const date = document.getElementById('reportDate').value;
+  const location = document.getElementById('reportLocation').value.trim();
+  const reporterId = document.getElementById('reporterId').value;
+  const offenderId = document.getElementById('offenderId').value;
+  const trashType = document.getElementById('reportTrashType').value;
+  const details = document.getElementById('reportDetails').value.trim();
+  const fileInput = document.getElementById('reportImage');
+
+  if (!date) { toast('กรุณาเลือกวันที่', 'warn'); return; }
+  if (!reporterId) { toast('กรุณาเลือกผู้แจ้ง', 'warn'); return; }
+  if (!offenderId) { toast('กรุณาเลือกผู้ทำผิด', 'warn'); return; }
+  if (reporterId === offenderId) { toast('ผู้แจ้งและผู้ทำผิดต้องไม่ใช่คนเดียวกัน', 'warn'); return; }
+  if (!trashType) { toast('กรุณาเลือกประเภท', 'warn'); return; }
+
+  const reporter = allStudents.find(s => s.id === reporterId);
+  const offender = allStudents.find(s => s.id === offenderId);
+
+  const submit = function(imageUrl) {
+    const payload = {
+      date: date,
+      reporterId: reporterId,
+      reporterName: reporter.fullName || (reporter.firstName + ' ' + reporter.lastName),
+      reporterClass: reporter.classLevel,
+      offenderId: offenderId,
+      offenderName: offender.fullName || (offender.firstName + ' ' + offender.lastName),
+      offenderClass: offender.classLevel,
+      location: location,
+      trashType: trashType,
+      details: details,
+      image: imageUrl || ''
+    };
+    showLoading('บันทึก...');
+    google.script.run
+      .withSuccessHandler(function(res) {
+        hideLoading();
+        if (res.success) {
+          toast('บันทึกสำเร็จ', 'success');
+          // refresh
+          google.script.run.withSuccessHandler(function(d) {
+            allStudents = d.students; allReports = d.reports;
+            // reset
+            document.getElementById('reportLocation').value = '';
+            document.getElementById('reportDetails').value = '';
+            document.getElementById('reportTrashType').value = '';
+            document.getElementById('reportImage').value = '';
+            pendingImage = null;
+            renderDashboard();
+          }).getAllInitialData('magiceye');
+        } else toast(res.message || 'บันทึกล้มเหลว', 'error');
+      })
+      .withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+      .me_addReport(payload);
+  };
+
+  // ถ้ามีรูป upload ก่อน
+  if (fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      showLoading('อัปโหลดรูปภาพ...');
+      const base64 = e.target.result.split(',')[1];
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.url) submit(res.url);
+          else { toast('อัปโหลดรูปล้มเหลว แต่จะบันทึกข้อมูลต่อ', 'warn'); submit(''); }
+        })
+        .withFailureHandler(function() { toast('อัปโหลดรูปล้มเหลว', 'warn'); submit(''); })
+        .uploadImageToDrive(base64, 'magiceye_' + Date.now() + '_' + file.name);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    submit('');
+  }
+}
+
+function renderDashboard() {
+  document.getElementById('statTotal').textContent = allReports.length;
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('statToday').textContent = allReports.filter(r => r.date === today).length;
+
+  const repMap = {}, offMap = {};
+  allReports.forEach(r => {
+    if (r.reporterId) {
+      if (!repMap[r.reporterId]) repMap[r.reporterId] = { name: r.reporterName, cls: r.reporterClass, count: 0 };
+      repMap[r.reporterId].count++;
+    }
+    if (r.offenderId) {
+      if (!offMap[r.offenderId]) offMap[r.offenderId] = { name: r.offenderName, cls: r.offenderClass, count: 0 };
+      offMap[r.offenderId].count++;
+    }
+  });
+
+  document.getElementById('statReporters').textContent = Object.keys(repMap).length;
+  document.getElementById('statOffenders').textContent = Object.keys(offMap).length;
+
+  const topR = Object.values(repMap).sort((a, b) => b.count - a.count).slice(0, 5);
+  const topO = Object.values(offMap).sort((a, b) => b.count - a.count).slice(0, 5);
+
+  document.getElementById('topReporters').innerHTML = topR.length === 0
+    ? '<p class="text-sm text-gray-500">ยังไม่มีข้อมูล</p>'
+    : topR.map((r, i) => `<div class="flex justify-between items-center bg-emerald-50 border border-emerald-100 rounded-lg p-2 mb-1 text-sm">
+        <div><span class="font-bold text-emerald-600">${i + 1}.</span> ${r.name} <span class="text-xs text-gray-500">(${r.cls})</span></div>
+        <div class="font-bold text-emerald-700">+${r.count}</div></div>`).join('');
+
+  document.getElementById('topOffenders').innerHTML = topO.length === 0
+    ? '<p class="text-sm text-gray-500">ยังไม่มีข้อมูล</p>'
+    : topO.map((r, i) => `<div class="flex justify-between items-center bg-red-50 border border-red-100 rounded-lg p-2 mb-1 text-sm">
+        <div><span class="font-bold text-red-600">${i + 1}.</span> ${r.name} <span class="text-xs text-gray-500">(${r.cls})</span></div>
+        <div class="font-bold text-red-700">${r.count} ครั้ง</div></div>`).join('');
+}
+
+function renderSearch() {
+  const q = (document.getElementById('searchQuery').value || '').trim().toLowerCase();
+  const cls = document.getElementById('searchClass').value;
+  let rows = allReports.slice();
+  if (cls) rows = rows.filter(r => r.offenderClass === cls);
+  if (q) rows = rows.filter(r => (r.reporterName + ' ' + r.offenderName + ' ' + r.location + ' ' + r.details + ' ' + r.trashType).toLowerCase().includes(q));
+  rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  if (rows.length === 0) {
+    document.getElementById('searchList').innerHTML = '<p class="text-center text-gray-500 py-8 text-sm">ไม่มีรายการ</p>';
+    return;
+  }
+  document.getElementById('searchList').innerHTML = rows.map(r => `
+    <div class="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-2">
+      <div class="flex justify-between items-start mb-2">
+        <div class="text-xs text-gray-500">📅 ${r.date}</div>
+        <button onclick="deleteReport('${r.id}')" class="text-red-500 hover:text-red-700 text-xs">🗑️ ลบ</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm mb-2">
+        <div class="bg-emerald-50 border border-emerald-100 rounded p-2">
+          <p class="text-xs text-emerald-600 font-semibold">🌟 ผู้แจ้ง</p>
+          <p>${r.reporterName}</p><p class="text-xs text-gray-500">${r.reporterClass}</p>
+        </div>
+        <div class="bg-red-50 border border-red-100 rounded p-2">
+          <p class="text-xs text-red-600 font-semibold">⚠️ ผู้ทำผิด</p>
+          <p>${r.offenderName}</p><p class="text-xs text-gray-500">${r.offenderClass}</p>
+        </div>
+      </div>
+      <p class="text-sm"><b>📍</b> ${r.location || '-'} | <b>🗑️</b> ${r.trashType || '-'}</p>
+      ${r.details ? `<p class="text-sm text-gray-600 mt-1">📝 ${r.details}</p>` : ''}
+      ${r.image ? `<a href="${r.image}" target="_blank" class="text-xs text-blue-600 hover:underline">📸 ดูรูปภาพ</a>` : ''}
+    </div>
+  `).join('');
+}
+
+function deleteReport(id) {
+  if (!confirm('ยืนยันลบรายการนี้? คะแนนของผู้แจ้งและผู้ทำผิดจะถูกย้อนกลับ')) return;
+  showLoading('ลบ...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoading();
+      if (res.success) {
+        google.script.run.withSuccessHandler(function(d) {
+          allStudents = d.students; allReports = d.reports;
+          renderSearch(); renderDashboard();
+          toast('ลบสำเร็จ', 'success');
+        }).getAllInitialData('magiceye');
+      } else toast(res.message || 'ลบล้มเหลว', 'error');
+    })
+    .withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+    .me_deleteReport(id);
+}
+
+function renderAwards() {
+  // ใช้ allStudents.points
+  const sorted = allStudents.slice().sort((a, b) => Number(b.points || 0) - Number(a.points || 0));
+  const top = sorted.filter(s => Number(s.points || 0) > 0).slice(0, 20);
+  if (top.length === 0) {
+    document.getElementById('awardsList').innerHTML = '<p class="text-center text-gray-500 py-8 text-sm">ยังไม่มีนักเรียนที่ได้รับเกียรติบัตร</p>';
+    return;
+  }
+  document.getElementById('awardsList').innerHTML = '<div class="space-y-2">' + top.map((s, i) => {
+    let medal = '🏅';
+    if (i === 0) medal = '🥇'; else if (i === 1) medal = '🥈'; else if (i === 2) medal = '🥉';
+    return `<div class="student-card flex justify-between items-center bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-3">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">${medal}</span>
+        <div>
+          <p class="font-medium text-gray-800">${s.fullName || (s.firstName + ' ' + s.lastName)}</p>
+          <p class="text-xs text-gray-500">${s.classLevel} | เลขที่ ${s.no || '-'}</p>
+        </div>
+      </div>
+      <div class="text-right">
+        <p class="text-2xl font-bold text-emerald-600">+${s.points}</p>
+        <p class="text-xs text-gray-500">คะแนน</p>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function exportReports() {
+  if (allReports.length === 0) { toast('ไม่มีข้อมูล', 'warn'); return; }
+  const data = allReports.map(r => ({
+    'วันที่': r.date,
+    'ผู้แจ้ง': r.reporterName,
+    'ชั้น (ผู้แจ้ง)': r.reporterClass,
+    'ผู้ทำผิด': r.offenderName,
+    'ชั้น (ผู้ทำผิด)': r.offenderClass,
+    'จุดที่พบ': r.location,
+    'ประเภท': r.trashType,
+    'รายละเอียด': r.details,
+    'รูปภาพ': r.image
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'ตาวิเศษ');
+  XLSX.writeFile(wb, 'ระบบตาวิเศษ_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+}
+
+window.addEventListener('load', loadAll);
+</script>
+</body>
+</html>

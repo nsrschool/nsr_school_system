@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏆 ระบบกิจกรรมของหายได้คืน - โรงเรียนหนองสำโรงวิทยา</title>
+  <?!= include('favicon'); ?>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%); min-height: 100vh; }
+    @keyframes pulse-green { 0%,100% { opacity:1 } 50% { opacity:.5 } }
+    .pulse-dot { animation: pulse-green 1.5s infinite; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast { animation: slideIn .3s ease-out; }
+    .tab-active { background: linear-gradient(to right, #f59e0b, #ef4444); color: white !important; }
+    .spinner { border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .activity-btn { transition: all .2s; }
+    .activity-btn.active { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-xl p-8 flex flex-col items-center gap-3">
+    <div class="spinner border-amber-500"></div>
+    <p class="text-gray-700 font-medium" id="loadingText">กำลังโหลด...</p>
+  </div>
+</div>
+<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<div class="container mx-auto px-4 py-4 max-w-7xl">
+
+  <!-- Header -->
+  <div class="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-4 mb-4">
+    <div class="flex justify-between items-center mb-2">
+      <button onclick="goHome()" class="text-amber-600 hover:text-amber-800 text-sm font-medium flex items-center gap-1">← กลับหน้าหลัก</button>
+      <div class="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full pulse-dot"></span>
+        <span class="text-emerald-700 text-xs font-medium">☁️ เชื่อมต่อกับ Google Sheets</span>
+      </div>
+    </div>
+    <div class="text-center">
+      <h1 class="text-xl md:text-3xl font-bold bg-gradient-to-r from-amber-600 to-red-600 bg-clip-text text-transparent">
+        🏆 ระบบกิจกรรมของหายได้คืน
+      </h1>
+      <p class="text-gray-600 text-xs md:text-sm mt-1">บันทึกความดี - ของหายได้คืน - เก็บเงินได้ - อาสาช่วยเหลือ</p>
+    </div>
+  </div>
+
+  <!-- Action Bar -->
+  <div class="bg-white/95 backdrop-blur rounded-xl shadow-lg p-3 mb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+    <p class="text-gray-700 text-xs flex items-center gap-2">
+      <span class="text-yellow-500">💡</span>
+      ข้อมูลถูกบันทึกบน Google Sheets ของคุณโดยอัตโนมัติ
+    </p>
+    <div class="flex flex-wrap gap-2">
+      <button onclick="exportExcel()" class="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg">📊 ส่งออก Excel</button>
+      <button onclick="printReport()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg">🖨️ พิมพ์รายงาน</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="bg-white/95 backdrop-blur rounded-xl shadow-lg p-2 mb-4 flex flex-wrap gap-1">
+    <button onclick="switchTab('record')" id="tab-record" class="tab-btn tab-active flex-1 min-w-[110px] px-3 py-2 rounded-lg text-xs md:text-sm font-medium">📝 บันทึกความดี</button>
+    <button onclick="switchTab('items')" id="tab-items" class="tab-btn flex-1 min-w-[110px] px-3 py-2 rounded-lg text-xs md:text-sm font-medium text-gray-700 hover:bg-gray-100">📦 รายการของ</button>
+    <button onclick="switchTab('reports')" id="tab-reports" class="tab-btn flex-1 min-w-[110px] px-3 py-2 rounded-lg text-xs md:text-sm font-medium text-gray-700 hover:bg-gray-100">📊 รายงานสรุป</button>
+  </div>
+
+  <!-- ===== Tab: Record ===== -->
+  <div id="content-record" class="tab-content">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <!-- Form -->
+      <div class="bg-white rounded-2xl shadow-xl p-5">
+        <h2 class="text-lg font-bold mb-3 text-gray-800" id="formTitle">📝 บันทึกความดี</h2>
+        <form id="recordForm" onsubmit="submitRecord(event)">
+          <input type="hidden" id="editingId">
+
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">ค้นหานักเรียน (ผู้ทำความดี):</label>
+            <input type="text" id="studentSearch" placeholder="พิมพ์ชื่อ หรือ ชั้นเรียน..." class="w-full p-2 border border-gray-300 rounded mb-2" oninput="filterStudentSelect()">
+            <select id="studentSelect" required class="w-full p-2 border border-gray-300 rounded">
+              <option value="">-- เลือกนักเรียน --</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">วันที่:</label>
+            <input type="date" id="dateInput" required class="w-full p-2 border border-gray-300 rounded">
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-2">ประเภทกิจกรรม:</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" onclick="selectActivity('lost-found', 5)" data-act="lost-found" class="activity-btn bg-amber-100 hover:bg-amber-200 text-amber-800 p-2 rounded text-xs font-medium">📦 ของหายได้คืน</button>
+              <button type="button" onclick="selectActivity('money-found', 5)" data-act="money-found" class="activity-btn bg-yellow-100 hover:bg-yellow-200 text-yellow-800 p-2 rounded text-xs font-medium">💰 เงินหายได้คืน</button>
+              <button type="button" onclick="selectActivity('trash-pickup', 3)" data-act="trash-pickup" class="activity-btn bg-green-100 hover:bg-green-200 text-green-800 p-2 rounded text-xs font-medium">🗑️ เก็บขยะ</button>
+              <button type="button" onclick="selectActivity('help-teacher', 5)" data-act="help-teacher" class="activity-btn bg-blue-100 hover:bg-blue-200 text-blue-800 p-2 rounded text-xs font-medium">👩‍🏫 ช่วยงานครู</button>
+              <button type="button" onclick="selectActivity('other-good', 5)" data-act="other-good" class="activity-btn bg-purple-100 hover:bg-purple-200 text-purple-800 p-2 rounded text-xs font-medium col-span-2">✨ ความดีอื่นๆ</button>
+            </div>
+          </div>
+
+          <div class="mb-3 hidden" id="itemDescGroup">
+            <label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียดของที่พบ:</label>
+            <input type="text" id="itemDescription" placeholder="เช่น กระเป๋าสีดำ, กล่องดินสอ" class="w-full p-2 border border-gray-300 rounded">
+          </div>
+
+          <div class="mb-3 hidden" id="moneyGroup">
+            <label class="block text-sm font-medium text-gray-700 mb-1">จำนวนเงิน (บาท):</label>
+            <input type="number" id="moneyAmount" min="0" step="0.01" placeholder="0.00" class="w-full p-2 border border-gray-300 rounded">
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">รายละเอียดเพิ่มเติม:</label>
+            <textarea id="description" rows="2" placeholder="เช่น พบที่สนามเด็กเล่น..." class="w-full p-2 border border-gray-300 rounded"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">คะแนนที่ได้รับ:</label>
+            <input type="number" id="pointsInput" min="1" value="5" required class="w-full p-2 border border-gray-300 rounded">
+          </div>
+
+          <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-red-500 hover:from-amber-600 hover:to-red-600 text-white py-3 rounded-lg font-medium shadow-md">💾 บันทึกความดี</button>
+          <button type="button" id="cancelBtn" onclick="cancelEdit()" class="w-full mt-2 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg hidden">ยกเลิกการแก้ไข</button>
+        </form>
+      </div>
+
+      <!-- Stats + History -->
+      <div class="bg-white rounded-2xl shadow-xl p-5">
+        <h2 class="text-lg font-bold mb-3 text-gray-800">📊 สถิติและประวัติ</h2>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="bg-amber-50 p-3 rounded-lg text-center">
+            <div class="text-2xl font-bold text-amber-700" id="statTotal">0</div>
+            <div class="text-xs text-gray-600">ครั้งที่บันทึก</div>
+          </div>
+          <div class="bg-red-50 p-3 rounded-lg text-center">
+            <div class="text-2xl font-bold text-red-700" id="statPoints">0</div>
+            <div class="text-xs text-gray-600">คะแนนรวม</div>
+          </div>
+          <div class="bg-blue-50 p-3 rounded-lg text-center">
+            <div class="text-2xl font-bold text-blue-700" id="statStudents">0</div>
+            <div class="text-xs text-gray-600">นักเรียนทั้งหมด</div>
+          </div>
+          <div class="bg-green-50 p-3 rounded-lg text-center">
+            <div class="text-2xl font-bold text-green-700" id="statToday">0</div>
+            <div class="text-xs text-gray-600">บันทึกวันนี้</div>
+          </div>
+        </div>
+        <div class="overflow-x-auto max-h-[400px] overflow-y-auto border rounded-lg">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-100 sticky top-0">
+              <tr>
+                <th class="p-2 text-left">วันที่</th>
+                <th class="p-2 text-left">ชื่อ</th>
+                <th class="p-2 text-left">กิจกรรม</th>
+                <th class="p-2 text-center">คะแนน</th>
+                <th class="p-2 text-center">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="recordTableBody">
+              <tr><td colspan="5" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูล</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab: Items ===== -->
+  <div id="content-items" class="tab-content hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="bg-white rounded-2xl shadow-xl p-5">
+        <h2 class="text-lg font-bold mb-3 text-gray-800">📦 รายการของที่ยังคงเหลือ</h2>
+        <div class="overflow-x-auto max-h-[500px] overflow-y-auto border rounded-lg">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-100 sticky top-0">
+              <tr><th class="p-2 text-left">วันที่พบ</th><th class="p-2 text-left">ของที่พบ</th><th class="p-2 text-left">ผู้พบ</th><th class="p-2 text-center">จัดการ</th></tr>
+            </thead>
+            <tbody id="remainingItemsBody"><tr><td colspan="4" class="p-4 text-center text-gray-400">-</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-xl p-5">
+        <h2 class="text-lg font-bold mb-3 text-gray-800">✅ ประวัติการรับคืนทั้งหมด</h2>
+        <div class="overflow-x-auto max-h-[500px] overflow-y-auto border rounded-lg">
+          <table class="w-full text-xs">
+            <thead class="bg-gray-100 sticky top-0">
+              <tr><th class="p-2 text-left">วันที่รับคืน</th><th class="p-2 text-left">ของที่พบ</th><th class="p-2 text-left">ผู้รับคืน</th><th class="p-2 text-left">ผู้พบเดิม</th></tr>
+            </thead>
+            <tbody id="claimedItemsBody"><tr><td colspan="4" class="p-4 text-center text-gray-400">-</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Tab: Reports ===== -->
+  <div id="content-reports" class="tab-content hidden">
+    <div class="bg-white rounded-2xl shadow-xl p-5">
+      <h2 class="text-lg font-bold mb-3 text-gray-800">🏅 นักเรียนยอดเยี่ยม TOP 10</h2>
+      <div id="topStudents" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="col-span-full text-center text-gray-400 p-8">กำลังโหลด...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center text-white/90 text-xs mt-6 pb-4">
+    <p class="mb-1">© พัฒนาโดย ครูรุ่งนิรันดร์ | สำหรับใช้ภายในโรงเรียนหนองสำโรงวิทยาเท่านั้น</p>
+    <p>ห้ามทำซ้ำ ดัดแปลง เพื่อการพาณิชย์ หรือแอบอ้างเป็นผลงานตนเองโดยเด็ดขาด</p>
+  </footer>
+
+</div>
+
+<!-- Claim Modal -->
+<div id="claimModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+    <h3 class="text-lg font-bold text-gray-800 mb-3">✅ บันทึกการรับคืนของ</h3>
+    <input type="hidden" id="claimItemId">
+    <div class="mb-3">
+      <label class="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้รับคืน:</label>
+      <input type="text" id="claimerName" class="w-full p-2 border border-gray-300 rounded" placeholder="ชื่อ-นามสกุล ผู้รับคืน">
+    </div>
+    <div class="flex justify-end gap-2">
+      <button onclick="closeClaimModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg">ยกเลิก</button>
+      <button onclick="confirmClaim()" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let allStudents = [];
+let allRecords = [];
+let webAppUrl = '';
+
+function showLoading(t) { document.getElementById('loadingText').textContent = t || 'กำลังโหลด...'; document.getElementById('loadingOverlay').classList.remove('hidden'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+function toast(msg, type) {
+  type = type || 'info';
+  const colors = { success: 'bg-green-600', error: 'bg-red-600', info: 'bg-blue-600', warning: 'bg-amber-500' };
+  const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  const el = document.createElement('div');
+  el.className = `toast ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 max-w-sm`;
+  el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+function goHome() { window.open(webAppUrl, '_top'); }
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(el => { el.classList.remove('tab-active'); el.classList.add('text-gray-700'); });
+  document.getElementById('content-' + name).classList.remove('hidden');
+  const btn = document.getElementById('tab-' + name);
+  btn.classList.add('tab-active'); btn.classList.remove('text-gray-700');
+  if (name === 'items') renderItems();
+  if (name === 'reports') renderTopStudents();
+}
+
+function loadAll() {
+  showLoading('กำลังโหลดข้อมูล...');
+  google.script.run.withSuccessHandler(function(data) {
+    hideLoading();
+    webAppUrl = data.webAppUrl || '';
+    allStudents = data.students || [];
+    allRecords = data.records || [];
+    fillStudentSelect();
+    renderRecordTable();
+    updateStats();
+    document.getElementById('dateInput').valueAsDate = new Date();
+  }).withFailureHandler(function(e) { hideLoading(); toast('โหลดล้มเหลว: ' + e.message, 'error'); })
+  .getAllInitialData('lostfound');
+}
+
+function fillStudentSelect() {
+  const sel = document.getElementById('studentSelect');
+  const q = (document.getElementById('studentSearch').value || '').toLowerCase().trim();
+  const filtered = allStudents.filter(s => !q ||
+    (s.fullName || '').toLowerCase().includes(q) ||
+    (s.classLevel || '').toLowerCase().includes(q)
+  );
+  sel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>' +
+    filtered.map(s => `<option value="${s.id}">${s.classLevel || ''} เลขที่ ${s.no || ''} - ${s.fullName}</option>`).join('');
+}
+function filterStudentSelect() { fillStudentSelect(); }
+
+function selectActivity(act, points) {
+  document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`[data-act="${act}"]`).classList.add('active');
+  document.getElementById('pointsInput').value = points;
+  document.getElementById('itemDescGroup').classList.toggle('hidden', act !== 'lost-found');
+  document.getElementById('moneyGroup').classList.toggle('hidden', act !== 'money-found');
+  document.getElementById('recordForm').dataset.activity = act;
+}
+
+function getActivityLabel(a) {
+  return ({'lost-found':'📦 ของหายได้คืน','money-found':'💰 เงินหายได้คืน','trash-pickup':'🗑️ เก็บขยะ','help-teacher':'👩‍🏫 ช่วยงานครู','other-good':'✨ ความดีอื่นๆ'})[a] || a;
+}
+
+function submitRecord(e) {
+  e.preventDefault();
+  const studentId = document.getElementById('studentSelect').value;
+  if (!studentId) { toast('กรุณาเลือกนักเรียน', 'warning'); return; }
+  const student = allStudents.find(s => s.id === studentId);
+  const activity = document.getElementById('recordForm').dataset.activity;
+  if (!activity) { toast('กรุณาเลือกประเภทกิจกรรม', 'warning'); return; }
+
+  const data = {
+    date: document.getElementById('dateInput').value,
+    studentId: studentId,
+    studentName: student ? student.fullName : '',
+    classLevel: student ? student.classLevel : '',
+    activity: activity,
+    itemDescription: document.getElementById('itemDescription').value,
+    moneyAmount: document.getElementById('moneyAmount').value,
+    description: document.getElementById('description').value,
+    points: Number(document.getElementById('pointsInput').value)
+  };
+
+  const editId = document.getElementById('editingId').value;
+  showLoading('กำลังบันทึก...');
+  const cb = function(r) { hideLoading(); toast(r.message, 'success'); resetForm(); reloadRecords(); };
+  const err = function(e) { hideLoading(); toast(e.message, 'error'); };
+  if (editId) google.script.run.withSuccessHandler(cb).withFailureHandler(err).lf_updateRecord(editId, data);
+  else google.script.run.withSuccessHandler(cb).withFailureHandler(err).lf_addRecord(data);
+}
+
+function resetForm() {
+  document.getElementById('recordForm').reset();
+  document.getElementById('editingId').value = '';
+  document.getElementById('formTitle').textContent = '📝 บันทึกความดี';
+  document.getElementById('cancelBtn').classList.add('hidden');
+  document.querySelectorAll('[data-act]').forEach(b => b.classList.remove('active'));
+  document.getElementById('itemDescGroup').classList.add('hidden');
+  document.getElementById('moneyGroup').classList.add('hidden');
+  document.getElementById('dateInput').valueAsDate = new Date();
+  document.getElementById('pointsInput').value = 5;
+}
+
+function reloadRecords() {
+  google.script.run.withSuccessHandler(function(list) {
+    allRecords = list; renderRecordTable(); updateStats(); renderItems(); renderTopStudents();
+  }).lf_getRecords();
+}
+
+function renderRecordTable() {
+  const tbody = document.getElementById('recordTableBody');
+  const sorted = [...allRecords].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+  if (sorted.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูล</td></tr>'; return; }
+  tbody.innerHTML = sorted.map(r => `
+    <tr class="border-t hover:bg-gray-50">
+      <td class="p-2">${r.date || '-'}</td>
+      <td class="p-2">${r.studentName || '-'}</td>
+      <td class="p-2">${getActivityLabel(r.activity)}</td>
+      <td class="p-2 text-center font-bold text-amber-600">${r.points}</td>
+      <td class="p-2 text-center">
+        <button onclick="editRecord('${r.id}')" class="text-blue-600 hover:text-blue-800 mx-0.5">✏️</button>
+        <button onclick="deleteRecord('${r.id}')" class="text-red-600 hover:text-red-800 mx-0.5">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function editRecord(id) {
+  const r = allRecords.find(x => x.id === id);
+  if (!r) return;
+  document.getElementById('editingId').value = r.id;
+  document.getElementById('formTitle').textContent = '✏️ แก้ไขรายการ';
+  document.getElementById('cancelBtn').classList.remove('hidden');
+  document.getElementById('dateInput').value = r.date;
+  document.getElementById('studentSelect').value = r.studentId;
+  document.getElementById('description').value = r.description || '';
+  document.getElementById('pointsInput').value = r.points || 5;
+  document.getElementById('itemDescription').value = r.itemDescription || '';
+  document.getElementById('moneyAmount').value = r.moneyAmount || '';
+  selectActivity(r.activity, r.points);
+  switchTab('record');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function cancelEdit() { resetForm(); }
+
+function deleteRecord(id) {
+  const r = allRecords.find(x => x.id === id);
+  if (!r) return;
+  if (!confirm('ยืนยันการลบรายการนี้?')) return;
+  showLoading('กำลังลบ...');
+  google.script.run.withSuccessHandler(function(rs) {
+    hideLoading(); toast(rs.message, 'success'); reloadRecords();
+  }).withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+  .lf_deleteRecord(id);
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = allRecords.length;
+  document.getElementById('statPoints').textContent = allRecords.reduce((s, r) => s + (Number(r.points) || 0), 0).toLocaleString();
+  document.getElementById('statStudents').textContent = allStudents.length;
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('statToday').textContent = allRecords.filter(r => r.date === today).length;
+}
+
+// ===== Items Tab =====
+function renderItems() {
+  const remaining = allRecords.filter(r => r.activity === 'lost-found' && r.status !== 'claimed');
+  const claimed = allRecords.filter(r => r.activity === 'lost-found' && r.status === 'claimed');
+  document.getElementById('remainingItemsBody').innerHTML = remaining.length === 0
+    ? '<tr><td colspan="4" class="p-4 text-center text-gray-400">ไม่มีของเหลือ</td></tr>'
+    : remaining.map(r => `<tr class="border-t"><td class="p-2">${r.date}</td><td class="p-2">${r.itemDescription || '-'}</td><td class="p-2">${r.studentName}</td><td class="p-2 text-center"><button onclick="openClaim('${r.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded">รับคืน</button></td></tr>`).join('');
+  document.getElementById('claimedItemsBody').innerHTML = claimed.length === 0
+    ? '<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีประวัติการรับคืน</td></tr>'
+    : claimed.map(r => `<tr class="border-t"><td class="p-2">${r.claimedDate || '-'}</td><td class="p-2">${r.itemDescription || '-'}</td><td class="p-2">${r.claimedBy || '-'}</td><td class="p-2">${r.studentName}</td></tr>`).join('');
+}
+function openClaim(id) {
+  document.getElementById('claimItemId').value = id;
+  document.getElementById('claimerName').value = '';
+  const m = document.getElementById('claimModal'); m.classList.remove('hidden'); m.classList.add('flex');
+}
+function closeClaimModal() {
+  const m = document.getElementById('claimModal'); m.classList.add('hidden'); m.classList.remove('flex');
+}
+function confirmClaim() {
+  const id = document.getElementById('claimItemId').value;
+  const name = document.getElementById('claimerName').value.trim();
+  if (!name) { toast('กรุณากรอกชื่อผู้รับคืน', 'warning'); return; }
+  showLoading('กำลังบันทึก...');
+  google.script.run.withSuccessHandler(function(r) {
+    hideLoading(); toast(r.message, 'success'); closeClaimModal(); reloadRecords();
+  }).withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+  .lf_claimItem(id, name);
+}
+
+// ===== Reports Tab =====
+function renderTopStudents() {
+  const scores = {};
+  allRecords.forEach(r => {
+    if (!r.studentName) return;
+    scores[r.studentName] = (scores[r.studentName] || 0) + Number(r.points || 0);
+  });
+  const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  const html = sorted.length === 0
+    ? '<div class="col-span-full text-center text-gray-400 p-8">ยังไม่มีข้อมูล</div>'
+    : sorted.map(([name, score], i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}`;
+        const bgColor = i === 0 ? 'from-yellow-300 to-yellow-500' : i === 1 ? 'from-gray-300 to-gray-400' : i === 2 ? 'from-orange-300 to-orange-500' : 'from-blue-100 to-blue-200';
+        return `<div class="bg-gradient-to-br ${bgColor} rounded-xl p-4 shadow-md text-white">
+          <div class="text-3xl mb-2">${medal}</div>
+          <div class="font-bold text-sm">${name}</div>
+          <div class="text-xl font-bold mt-1">${score.toLocaleString()} คะแนน</div>
+        </div>`;
+      }).join('');
+  document.getElementById('topStudents').innerHTML = html;
+}
+
+// ===== Export & Print =====
+function exportExcel() {
+  const data = allRecords.map(r => ({
+    'วันที่': r.date, 'ชื่อ-นามสกุล': r.studentName, 'ชั้น': r.classLevel,
+    'ประเภทกิจกรรม': getActivityLabel(r.activity), 'รายละเอียดของ': r.itemDescription,
+    'จำนวนเงิน': r.moneyAmount, 'รายละเอียด': r.description, 'คะแนน': r.points, 'สถานะ': r.status === 'claimed' ? 'รับคืนแล้ว' : 'ยังคงเหลือ'
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Records');
+  XLSX.writeFile(wb, 'รายงานความดี_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  toast('ส่งออก Excel สำเร็จ', 'success');
+}
+
+function printReport() {
+  const scores = {};
+  allRecords.forEach(r => { if (r.studentName) scores[r.studentName] = (scores[r.studentName] || 0) + Number(r.points || 0); });
+  const top = Object.entries(scores).sort((a,b) => b[1] - a[1]).slice(0, 10);
+  const html = `<html><head><title>รายงานความดี</title><style>body{font-family:'Sarabun',sans-serif}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px}h1,h2{text-align:center}</style></head><body>
+    <h1>รายงานสรุปกิจกรรมความดี</h1>
+    <p>วันที่พิมพ์: ${new Date().toLocaleDateString('th-TH', { dateStyle: 'full' })}</p>
+    <p>บันทึกทั้งหมด: ${allRecords.length} ครั้ง | คะแนนรวม: ${allRecords.reduce((s,r)=>s+Number(r.points||0),0).toLocaleString()}</p>
+    <h2>นักเรียนยอดเยี่ยม TOP 10</h2>
+    <table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th>คะแนน</th></tr></thead><tbody>
+    ${top.map(([n,s],i) => `<tr><td>${i+1}</td><td>${n}</td><td>${s}</td></tr>`).join('')}
+    </tbody></table></body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(html); w.document.close(); w.print();
+}
+
+window.addEventListener('load', loadAll);
+</script>
+</body>
+</html>

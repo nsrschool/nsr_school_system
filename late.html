@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🕒 ระบบบันทึกการมาสาย - หนองสำโรงวิทยา</title>
+  <?!= include('favicon'); ?>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; background: linear-gradient(135deg, #a855f7 0%, #d946ef 100%); min-height: 100vh; }
+    @keyframes pulse-green { 0%,100% { opacity:1 } 50% { opacity:.5 } }
+    .pulse-dot { animation: pulse-green 1.5s infinite; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast { animation: slideIn .3s ease-out; }
+    .spinner { border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .role-btn { transition: all .2s; }
+    .role-btn.active { background: white; color: #a21caf; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+  <div class="bg-white rounded-xl p-8 flex flex-col items-center gap-3">
+    <div class="spinner border-purple-500"></div>
+    <p class="text-gray-700 font-medium" id="loadingText">กำลังโหลด...</p>
+  </div>
+</div>
+<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<div class="container mx-auto px-4 py-4 max-w-7xl">
+
+  <!-- Header -->
+  <div class="bg-white/95 backdrop-blur rounded-2xl shadow-2xl p-4 mb-4">
+    <div class="flex justify-between items-center mb-2">
+      <button onclick="goHome()" class="text-purple-600 hover:text-purple-800 text-sm font-medium">← กลับหน้าหลัก</button>
+      <div class="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full pulse-dot"></span>
+        <span class="text-emerald-700 text-xs font-medium">☁️ เชื่อมต่อกับ Google Sheets</span>
+      </div>
+    </div>
+    <div class="text-center">
+      <h1 class="text-xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
+        🕒 ระบบบันทึกการมาสาย
+      </h1>
+      <p class="text-gray-600 text-xs md:text-sm mt-1">โรงเรียนหนองสำโรงวิทยา</p>
+    </div>
+  </div>
+
+  <!-- Role Selector -->
+  <div class="bg-white/20 backdrop-blur rounded-2xl p-2 mb-4 flex gap-2">
+    <button onclick="switchRole('recorder')" id="role-recorder" class="role-btn active flex-1 px-3 py-2 rounded-xl text-sm text-white">
+      📝 ผู้บันทึก
+    </button>
+    <button onclick="switchRole('approver')" id="role-approver" class="role-btn flex-1 px-3 py-2 rounded-xl text-sm text-white">
+      ✅ ผู้อนุมัติ
+    </button>
+    <button onclick="switchRole('admin')" id="role-admin" class="role-btn flex-1 px-3 py-2 rounded-xl text-sm text-white">
+      ⚙️ ผู้ดูแล
+    </button>
+  </div>
+
+  <!-- ========== RECORDER ========== -->
+  <div id="role-content-recorder" class="role-content">
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-4 md:p-6">
+      <h2 class="text-lg font-bold text-gray-800 mb-3">📝 บันทึกการมาสาย</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">🏫 ชั้นเรียน</label>
+          <select id="recClass" onchange="updateRecorderStudents()" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">-- เลือกชั้น --</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">👤 นักเรียน</label>
+          <select id="recStudent" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="">-- เลือกนักเรียน --</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-sm font-semibold text-gray-700 mb-1">📝 เหตุผลที่มาสาย</label>
+        <select id="recReason" class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2">
+          <option value="">-- เลือกเหตุผล --</option>
+          <option value="ตื่นสาย">ตื่นสาย</option>
+          <option value="รถติด">รถติด</option>
+          <option value="ป่วย">ป่วย</option>
+          <option value="ธุระจำเป็น">ธุระจำเป็น</option>
+          <option value="ไม่มีเหตุผล">ไม่มีเหตุผล</option>
+          <option value="อื่นๆ">อื่นๆ</option>
+        </select>
+        <input type="text" id="recReasonOther" placeholder="ระบุเพิ่มเติม (ถ้ามี)" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">⚖️ มาตรการ</label>
+          <select id="recAction" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            <option value="ตักเตือน">ตักเตือน</option>
+            <option value="ทำกิจกรรม">ทำกิจกรรม</option>
+            <option value="แจ้งผู้ปกครอง">แจ้งผู้ปกครอง</option>
+            <option value="หักคะแนน">หักคะแนน</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">📉 คะแนนหัก</label>
+          <input type="number" id="recPoints" value="1" min="0" max="100" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-sm font-semibold text-gray-700 mb-1">👤 ผู้บันทึก</label>
+        <input type="text" id="recRecorder" placeholder="ชื่อผู้บันทึก" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+      </div>
+
+      <button onclick="submitPending()" class="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 text-white font-bold py-3 rounded-xl shadow-lg">
+        📤 ส่งข้อมูลรอตรวจทาน
+      </button>
+
+      <div class="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+        ℹ️ ข้อมูลที่บันทึกจะถูกส่งไปยังผู้อนุมัติ ก่อนนำไปหักคะแนนจริง
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== APPROVER ========== -->
+  <div id="role-content-approver" class="role-content hidden">
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-4 md:p-6">
+      <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+        <h2 class="text-lg font-bold text-gray-800">✅ รายการรอตรวจทาน <span id="pendingCount" class="text-purple-600">(0)</span></h2>
+        <div class="flex gap-2">
+          <button onclick="approveAll()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm">✅ อนุมัติทั้งหมด</button>
+          <button onclick="refreshPending()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">🔄 รีเฟรช</button>
+        </div>
+      </div>
+      <div id="pendingList"></div>
+    </div>
+  </div>
+
+  <!-- ========== ADMIN ========== -->
+  <div id="role-content-admin" class="role-content hidden">
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div class="bg-white/95 rounded-xl p-3 text-center"><p class="text-xs text-gray-600">รายการทั้งหมด</p><p id="aStatTotal" class="text-2xl font-bold text-purple-600">0</p></div>
+      <div class="bg-white/95 rounded-xl p-3 text-center"><p class="text-xs text-gray-600">วันนี้</p><p id="aStatToday" class="text-2xl font-bold text-blue-600">0</p></div>
+      <div class="bg-white/95 rounded-xl p-3 text-center"><p class="text-xs text-gray-600">นักเรียนซ้ำ</p><p id="aStatRepeat" class="text-2xl font-bold text-red-600">0</p></div>
+      <div class="bg-white/95 rounded-xl p-3 text-center"><p class="text-xs text-gray-600">รอตรวจทาน</p><p id="aStatPending" class="text-2xl font-bold text-amber-600">0</p></div>
+    </div>
+
+    <div class="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-4 md:p-6">
+      <div class="flex flex-wrap gap-2 mb-3">
+        <input type="text" id="adminSearch" placeholder="🔍 ค้นหา ชื่อ/ชั้น/เหตุผล" oninput="renderAdminList()" class="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg">
+        <select id="adminFilterClass" onchange="renderAdminList()" class="px-3 py-2 border border-gray-300 rounded-lg">
+          <option value="">ทุกชั้น</option>
+        </select>
+        <button onclick="exportLate()" class="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm">📊 Export Excel</button>
+      </div>
+      <div id="adminList"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center text-white/90 text-xs mt-6 pb-4">
+    <p class="mb-1">© พัฒนาโดย ครูรุ่งนิรันดร์ | สำหรับใช้ภายในโรงเรียนหนองสำโรงวิทยาเท่านั้น</p>
+    <p>ห้ามทำซ้ำ ดัดแปลง เพื่อการพาณิชย์ หรือแอบอ้างเป็นผลงานตนเองโดยเด็ดขาด</p>
+  </footer>
+
+</div>
+
+<script>
+let allStudents = [], allRecords = [], allPending = [], webAppUrl = '';
+
+function showLoading(t) {
+  document.getElementById('loadingText').textContent = t || 'กำลังโหลด...';
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+function toast(msg, type) {
+  type = type || 'success';
+  const colors = { success: 'bg-emerald-500', error: 'bg-red-500', info: 'bg-blue-500', warn: 'bg-amber-500' };
+  const el = document.createElement('div');
+  el.className = `toast ${colors[type]} text-white px-4 py-2 rounded-lg shadow-lg text-sm max-w-xs`;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+function goHome() {
+  if (webAppUrl) window.open(webAppUrl, '_top');
+  else toast('ยังโหลด URL ไม่เสร็จ', 'warn');
+}
+
+function switchRole(name) {
+  document.querySelectorAll('.role-content').forEach(e => e.classList.add('hidden'));
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('role-content-' + name).classList.remove('hidden');
+  document.getElementById('role-' + name).classList.add('active');
+  if (name === 'approver') renderPending();
+  if (name === 'admin') renderAdmin();
+}
+
+function loadAll() {
+  showLoading('โหลดข้อมูล...');
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+      webAppUrl = data.webAppUrl || '';
+      allStudents = data.students || [];
+      allRecords = data.records || [];
+      allPending = data.pending || [];
+      populateClassDropdowns();
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      toast('โหลดข้อมูลล้มเหลว: ' + err.message, 'error');
+    })
+    .getAllInitialData('late');
+}
+
+function populateClassDropdowns() {
+  const classes = [...new Set(allStudents.map(s => s.classLevel).filter(Boolean))].sort();
+  ['recClass', 'adminFilterClass'].forEach(id => {
+    const sel = document.getElementById(id);
+    const first = sel.options[0].outerHTML;
+    sel.innerHTML = first + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+  });
+}
+
+function updateRecorderStudents() {
+  const cls = document.getElementById('recClass').value;
+  const sel = document.getElementById('recStudent');
+  if (!cls) { sel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>'; return; }
+  const students = allStudents.filter(s => s.classLevel === cls).sort((a, b) => Number(a.no || 0) - Number(b.no || 0));
+  sel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>' + students.map(s =>
+    `<option value="${s.id}">เลขที่ ${s.no || '-'} ${s.fullName || (s.firstName + ' ' + s.lastName)}</option>`
+  ).join('');
+}
+
+function submitPending() {
+  const sid = document.getElementById('recStudent').value;
+  const reasonSel = document.getElementById('recReason').value;
+  const reasonOther = document.getElementById('recReasonOther').value.trim();
+  const action = document.getElementById('recAction').value;
+  const points = Number(document.getElementById('recPoints').value);
+  const recorder = document.getElementById('recRecorder').value.trim();
+
+  if (!sid) { toast('กรุณาเลือกนักเรียน', 'warn'); return; }
+  if (!reasonSel) { toast('กรุณาเลือกเหตุผล', 'warn'); return; }
+  if (!recorder) { toast('กรุณาใส่ชื่อผู้บันทึก', 'warn'); return; }
+
+  const s = allStudents.find(x => x.id === sid);
+  if (!s) { toast('ไม่พบข้อมูลนักเรียน', 'error'); return; }
+
+  const reason = reasonOther ? (reasonSel + ' - ' + reasonOther) : reasonSel;
+  const payload = {
+    studentId: sid,
+    studentName: s.fullName || (s.firstName + ' ' + s.lastName),
+    classLevel: s.classLevel,
+    reason: reason,
+    action: action,
+    points: points,
+    recorder: recorder
+  };
+
+  showLoading('ส่งข้อมูล...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoading();
+      if (res.success) {
+        toast(res.message || 'ส่งข้อมูลรอตรวจทานสำเร็จ', 'success');
+        // reset
+        document.getElementById('recStudent').value = '';
+        document.getElementById('recReason').value = '';
+        document.getElementById('recReasonOther').value = '';
+        // refresh pending
+        google.script.run.withSuccessHandler(function(p) { allPending = p || []; }).lt_getPending();
+      } else toast(res.message || 'ส่งข้อมูลล้มเหลว', 'error');
+    })
+    .withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+    .lt_addPending(payload);
+}
+
+// ============ APPROVER ============
+function refreshPending() {
+  showLoading('โหลด...');
+  google.script.run
+    .withSuccessHandler(function(p) {
+      hideLoading();
+      allPending = p || [];
+      renderPending();
+      toast('รีเฟรชสำเร็จ', 'success');
+    })
+    .withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+    .lt_getPending();
+}
+
+function renderPending() {
+  document.getElementById('pendingCount').textContent = '(' + allPending.length + ')';
+  if (allPending.length === 0) {
+    document.getElementById('pendingList').innerHTML = '<p class="text-center text-gray-500 py-8 text-sm">✨ ไม่มีรายการรอตรวจทาน</p>';
+    return;
+  }
+  document.getElementById('pendingList').innerHTML = allPending.map(p => `
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-2">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <p class="font-semibold text-gray-800">${p.studentName}</p>
+          <p class="text-xs text-gray-600">${p.classLevel} | ${p.date}</p>
+        </div>
+        <div class="text-right">
+          <p class="text-sm font-bold text-red-600">-${p.points} คะแนน</p>
+        </div>
+      </div>
+      <p class="text-sm text-gray-700 mb-1">📝 <b>เหตุผล:</b> ${p.reason}</p>
+      <p class="text-sm text-gray-700 mb-1">⚖️ <b>มาตรการ:</b> ${p.action}</p>
+      <p class="text-xs text-gray-500 mb-2">👤 ${p.recorder}</p>
+      <div class="flex gap-2">
+        <button onclick="approveOne('${p.id}')" class="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm">✅ อนุมัติ</button>
+        <button onclick="rejectOne('${p.id}')" class="flex-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm">❌ ยกเลิก</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function approveOne(id) {
+  showLoading('อนุมัติ...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoading();
+      if (res.success) {
+        toast('อนุมัติสำเร็จ', 'success');
+        // refresh ทั้งหมด
+        google.script.run.withSuccessHandler(function(d) {
+          allStudents = d.students; allRecords = d.records; allPending = d.pending;
+          renderPending();
+        }).getAllInitialData('late');
+      } else toast(res.message || 'อนุมัติล้มเหลว', 'error');
+    })
+    .withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+    .lt_approve(id);
+}
+
+function rejectOne(id) {
+  if (!confirm('ยืนยันยกเลิกรายการนี้?')) return;
+  showLoading('ยกเลิก...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoading();
+      if (res.success) {
+        allPending = allPending.filter(p => p.id !== id);
+        renderPending();
+        toast('ยกเลิกสำเร็จ', 'success');
+      } else toast(res.message || 'ยกเลิกล้มเหลว', 'error');
+    })
+    .withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+    .lt_rejectPending(id);
+}
+
+function approveAll() {
+  if (allPending.length === 0) { toast('ไม่มีรายการรอตรวจทาน', 'warn'); return; }
+  if (!confirm('ยืนยันอนุมัติทั้งหมด ' + allPending.length + ' รายการ?')) return;
+  showLoading('อนุมัติทั้งหมด...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoading();
+      if (res.success) {
+        toast('อนุมัติทั้งหมด ' + res.count + ' รายการสำเร็จ', 'success');
+        google.script.run.withSuccessHandler(function(d) {
+          allStudents = d.students; allRecords = d.records; allPending = d.pending;
+          renderPending();
+        }).getAllInitialData('late');
+      } else toast(res.message || 'อนุมัติล้มเหลว', 'error');
+    })
+    .withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+    .lt_approveAll();
+}
+
+// ============ ADMIN ============
+function renderAdmin() {
+  document.getElementById('aStatTotal').textContent = allRecords.length;
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('aStatToday').textContent = allRecords.filter(r => (r.date || '').startsWith(today)).length;
+  // นักเรียนซ้ำ - ที่มาสายมากกว่า 1 ครั้ง
+  const cntMap = {};
+  allRecords.forEach(r => { if (r.studentId) cntMap[r.studentId] = (cntMap[r.studentId] || 0) + 1; });
+  document.getElementById('aStatRepeat').textContent = Object.values(cntMap).filter(v => v > 1).length;
+  document.getElementById('aStatPending').textContent = allPending.length;
+  renderAdminList();
+}
+
+function renderAdminList() {
+  const q = (document.getElementById('adminSearch').value || '').trim().toLowerCase();
+  const cls = document.getElementById('adminFilterClass').value;
+  let rows = allRecords.slice();
+  if (cls) rows = rows.filter(r => r.classLevel === cls);
+  if (q) rows = rows.filter(r => (r.studentName + ' ' + r.classLevel + ' ' + r.reason + ' ' + r.recorder).toLowerCase().includes(q));
+  rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+  if (rows.length === 0) {
+    document.getElementById('adminList').innerHTML = '<p class="text-center text-gray-500 py-8 text-sm">ไม่มีข้อมูล</p>';
+    return;
+  }
+  let html = '<div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-purple-50"><tr>' +
+    '<th class="p-2 text-left">วันที่</th><th class="p-2 text-left">ชั้น</th><th class="p-2 text-left">นักเรียน</th>' +
+    '<th class="p-2 text-left">เหตุผล</th><th class="p-2 text-left">มาตรการ</th><th class="p-2 text-center">คะแนน</th>' +
+    '<th class="p-2 text-left">ผู้บันทึก</th><th></th></tr></thead><tbody>';
+  rows.forEach(r => {
+    html += `<tr class="border-b border-gray-100 hover:bg-gray-50">
+      <td class="p-2 text-xs">${r.date || '-'}</td>
+      <td class="p-2 text-xs">${r.classLevel || '-'}</td>
+      <td class="p-2">${r.studentName || '-'}</td>
+      <td class="p-2 text-xs">${r.reason || '-'}</td>
+      <td class="p-2 text-xs">${r.action || '-'}</td>
+      <td class="p-2 text-center text-red-600 font-bold">-${r.points || 0}</td>
+      <td class="p-2 text-xs">${r.recorder || '-'}</td>
+      <td class="p-2"><button onclick="deleteLate('${r.id}')" class="text-red-500 hover:text-red-700 text-xs">🗑️</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+  document.getElementById('adminList').innerHTML = html;
+}
+
+function deleteLate(id) {
+  if (!confirm('ยืนยันลบรายการนี้? คะแนนของนักเรียนจะถูกย้อนกลับ')) return;
+  showLoading('ลบ...');
+  google.script.run
+    .withSuccessHandler(function(res) {
+      hideLoading();
+      if (res.success) {
+        google.script.run.withSuccessHandler(function(d) {
+          allStudents = d.students; allRecords = d.records; allPending = d.pending;
+          renderAdmin();
+          toast('ลบสำเร็จ', 'success');
+        }).getAllInitialData('late');
+      } else toast(res.message || 'ลบล้มเหลว', 'error');
+    })
+    .withFailureHandler(function(e) { hideLoading(); toast(e.message, 'error'); })
+    .lt_deleteRecord(id);
+}
+
+function exportLate() {
+  if (allRecords.length === 0) { toast('ไม่มีข้อมูล', 'warn'); return; }
+  const data = allRecords.map(r => ({
+    'วันที่': r.date,
+    'ชั้น': r.classLevel,
+    'ชื่อ-นามสกุล': r.studentName,
+    'เหตุผล': r.reason,
+    'มาตรการ': r.action,
+    'คะแนน': r.points,
+    'ผู้บันทึก': r.recorder
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'การมาสาย');
+  XLSX.writeFile(wb, 'การมาสาย_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+}
+
+window.addEventListener('load', loadAll);
+</script>
+</body>
+</html>
