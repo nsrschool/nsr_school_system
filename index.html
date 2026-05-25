@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>กำลังเข้าสู่ระบบ... | โรงเรียนหนองสำโรงวิทยา</title>
+  <meta http-equiv="refresh" content="3;url=https://script.google.com/macros/s/AKfycbzEI-BXDIOhO4FPIzPOcYGyHaVaNdH-dE4yDuL0I7fjGzJW7puGk2cbh_iBhn8Aq9sk-w/exec">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Sarabun', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #fff;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      padding: 40px 30px;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+      color: #1f2937;
+    }
+    .icon { font-size: 64px; margin-bottom: 16px; animation: bounce 2s infinite; }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #e5e7eb;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .info-box {
+      background: #f3f4f6;
+      border-left: 4px solid #667eea;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 16px 0;
+      text-align: left;
+      font-size: 13px;
+      color: #4b5563;
+    }
+    .btn {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 14px 32px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      margin-top: 8px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    .countdown {
+      font-size: 14px;
+      color: #6b7280;
+      margin-top: 16px;
+    }
+    .countdown b { color: #667eea; font-size: 18px; }
+    .footer {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🏫</div>
+    <h1>ระบบบริหารโรงเรียนหนองสำโรงวิทยา</h1>
+    <p class="subtitle">กำลังพาคุณเข้าสู่ระบบ...</p>
+
+    <div class="spinner"></div>
+
+    <div class="info-box">
+      💡 <b>เนื่องจาก</b> ระบบนี้ใช้ <b>Google Apps Script + Google Sheets</b> เป็นฐานข้อมูล
+      จึงต้องเปิดผ่านลิงก์ของ Apps Script โดยตรง (ไม่สามารถใช้บน GitHub Pages ได้)
+    </div>
+
+    <a href="https://script.google.com/macros/s/AKfycbzEI-BXDIOhO4FPIzPOcYGyHaVaNdH-dE4yDuL0I7fjGzJW7puGk2cbh_iBhn8Aq9sk-w/exec" class="btn">
+      🚀 เข้าสู่ระบบเลย
+    </a>
+
+    <p class="countdown">
+      ระบบจะพาคุณไปอัตโนมัติใน <b id="counter">3</b> วินาที...
+    </p>
+
+    <div class="footer">
+      © พัฒนาโดย ครูรุ่งนิรันดร์ | โรงเรียนหนองสำโรงวิทยา
+    </div>
+  </div>
+
+  <script>
+    let count = 3;
+    const counterEl = document.getElementById('counter');
+    const interval = setInterval(() => {
+      count--;
+      if (count >= 0) counterEl.textContent = count;
+      if (count <= 0) {
+        clearInterval(interval);
+        window.location.href = 'https://script.google.com/macros/s/AKfycbzEI-BXDIOhO4FPIzPOcYGyHaVaNdH-dE4yDuL0I7fjGzJW7puGk2cbh_iBhn8Aq9sk-w/exec';
+      }
+    }, 1000);
+  </script>
+</body>
+</html>
