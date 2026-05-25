@@ -1,8 +1,11 @@
 /**
  * ===================================================================
- * 🏫 ระบบบริหารจัดการนักเรียน โรงเรียนหนองสำโรงวิทยา
+ * 🏫 ระบบบริหารจัดการนักเรียน โรงเรียนหนองสำโรงวิทยา (API Mode)
  * ===================================================================
  * รวม 5 ระบบเข้าด้วยกัน โดยใช้ฐานข้อมูลนักเรียนร่วมกัน (Shared Students DB)
+ *
+ * ⚠️ MODE: API for GitHub Pages
+ * Frontend รันบน GitHub Pages เรียก API นี้ผ่าน fetch() แทน google.script.run
  *
  *   1. ระบบกิจกรรมของหายได้คืน (Lost & Found)
  *   2. ระบบตัดคะแนนความประพฤติ (Conduct Deduction)
@@ -19,19 +22,17 @@
 const SS = SpreadsheetApp.getActiveSpreadsheet();
 const DRIVE_FOLDER_NAME = 'School_System_Assets';
 
-// ชื่อชีตทั้งหมด
 const SHEETS = {
-  SETTINGS:        'Settings',          // ตั้งค่าทั่วไป (ข้อมูลโรงเรียน)
-  STUDENTS:        'Students',          // ฐานข้อมูลนักเรียนร่วม (Shared)
-  LOST_FOUND:      'LostFound',         // บันทึกของหาย / ความดี
-  CONDUCT:         'Conduct',           // ประวัติตัดคะแนนความประพฤติ
-  ATTENDANCE:      'Attendance',        // บันทึกการเช็คชื่อ
-  MAGIC_EYE:       'MagicEye',          // ระบบตาวิเศษ
-  LATE:            'Late',              // บันทึกการมาสาย
-  LATE_PENDING:    'LatePending'        // รายการมาสายที่รอตรวจทาน
+  SETTINGS:        'Settings',
+  STUDENTS:        'Students',
+  LOST_FOUND:      'LostFound',
+  CONDUCT:         'Conduct',
+  ATTENDANCE:      'Attendance',
+  MAGIC_EYE:       'MagicEye',
+  LATE:            'Late',
+  LATE_PENDING:    'LatePending'
 };
 
-// หัวคอลัมน์ของแต่ละชีต
 const HEADERS = {
   Settings: ['Key', 'Value'],
   Students: ['ID', 'ชั้น', 'เลขที่', 'คำนำหน้า', 'ชื่อ', 'นามสกุล', 'คะแนน', 'วันที่เพิ่ม'],
@@ -45,38 +46,146 @@ const HEADERS = {
 
 
 // ===================================================================
-// 🌐 doGet - Web App Entry Point
+// 🌐 API ENTRY POINTS - doGet & doPost (สำหรับ Fetch จาก GitHub Pages)
 // ===================================================================
+
+/**
+ * doGet - รับ GET request
+ * รูปแบบ: ?action=FUNCTION_NAME&p1=value1&p2=value2&callback=jsonp_callback
+ * รองรับ JSONP (?callback=xxx) เพื่อหลีกเลี่ยงปัญหา CORS
+ */
 function doGet(e) {
-  initSheets(); // สร้างชีตอัตโนมัติเมื่อรันครั้งแรก
-
-  const page = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'index';
-  const validPages = ['index', 'lostfound', 'conduct', 'attendance', 'magiceye', 'late'];
-  const targetPage = validPages.indexOf(page) >= 0 ? page : 'index';
-
-  const t = HtmlService.createTemplateFromFile(targetPage);
-  t.webAppUrl = ScriptApp.getService().getUrl();
-
-  return t.evaluate()
-    .setTitle('ระบบบริหารจัดการนักเรียน - หนองสำโรงวิทยา')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  initSheets();
+  return handleRequest(e, 'GET');
 }
 
-// include ไฟล์ HTML อื่นเข้าไปใน template (สำหรับ favicon, css ฯลฯ)
-function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+/**
+ * doPost - รับ POST request (สำหรับข้อมูลใหญ่ เช่น รูปภาพ base64)
+ * Body: JSON {action: "...", payload: {...}}
+ */
+function doPost(e) {
+  initSheets();
+  return handleRequest(e, 'POST');
 }
 
-// คืนค่า URL ของ Web App สำหรับใช้สลับหน้า
+function handleRequest(e, method) {
+  let action = '', payload = {}, callback = '';
+
+  try {
+    if (method === 'POST') {
+      const body = JSON.parse(e.postData.contents || '{}');
+      action = body.action || '';
+      payload = body.payload || {};
+      callback = body.callback || '';
+    } else {
+      action = (e.parameter.action) || '';
+      callback = (e.parameter.callback) || '';
+      // ถ้ามี payload เป็น JSON string
+      if (e.parameter.payload) {
+        try { payload = JSON.parse(e.parameter.payload); } catch(_) { payload = {}; }
+      } else {
+        // รวม parameter ทั้งหมด (ยกเว้น action, callback) เป็น payload
+        for (const k in e.parameter) {
+          if (k !== 'action' && k !== 'callback') payload[k] = e.parameter[k];
+        }
+      }
+    }
+
+    if (!action) {
+      return jsonOut({ ok: false, error: 'Missing action parameter' }, callback);
+    }
+
+    const result = dispatch(action, payload);
+    return jsonOut({ ok: true, data: result }, callback);
+
+  } catch (err) {
+    return jsonOut({ ok: false, error: err.message || String(err) }, callback);
+  }
+}
+
+/**
+ * ส่งคืน JSON หรือ JSONP (ถ้ามี callback)
+ */
+function jsonOut(obj, callback) {
+  const text = JSON.stringify(obj);
+  if (callback) {
+    // JSONP - เลี่ยง CORS
+    return ContentService
+      .createTextOutput(callback + '(' + text + ');')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService
+    .createTextOutput(text)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * mapping action -> function
+ */
+function dispatch(action, p) {
+  switch (action) {
+    // ===== Settings =====
+    case 'getSettings':         return getSettings();
+    case 'saveSettings':        return saveSettings(p);
+    // ===== Students =====
+    case 'getStudents':         return getStudents();
+    case 'addStudent':          return addStudent(p);
+    case 'updateStudent':       return updateStudent(p.id, p.data || p);
+    case 'deleteStudent':       return deleteStudent(p.id);
+    case 'bulkImportStudents':  return bulkImportStudents(p.arr || p);
+    // ===== Lost & Found =====
+    case 'lf_getRecords':       return lf_getRecords();
+    case 'lf_addRecord':        return lf_addRecord(p);
+    case 'lf_updateRecord':     return lf_updateRecord(p.id, p.data || p);
+    case 'lf_deleteRecord':     return lf_deleteRecord(p.id);
+    case 'lf_claimItem':        return lf_claimItem(p.id, p.claimerName);
+    // ===== Conduct =====
+    case 'cd_getRecords':       return cd_getRecords();
+    case 'cd_addRecord':        return cd_addRecord(p);
+    case 'cd_updateRecord':     return cd_updateRecord(p.id, p.data || p);
+    case 'cd_deleteRecord':     return cd_deleteRecord(p.id);
+    // ===== Attendance =====
+    case 'at_getRecords':       return at_getRecords(p.date);
+    case 'at_addRecord':        return at_addRecord(p);
+    case 'at_bulkSave':         return at_bulkSave(p.records || p);
+    case 'at_deleteRecord':     return at_deleteRecord(p.id);
+    // ===== Magic Eye =====
+    case 'me_getReports':       return me_getReports();
+    case 'me_addReport':        return me_addReport(p);
+    case 'me_updateReport':     return me_updateReport(p.id, p.data || p);
+    case 'me_deleteReport':     return me_deleteReport(p.id);
+    // ===== Late =====
+    case 'lt_getRecords':       return lt_getRecords();
+    case 'lt_getPending':       return lt_getPending();
+    case 'lt_addPending':       return lt_addPending(p);
+    case 'lt_approve':          return lt_approve(p.id);
+    case 'lt_approveAll':       return lt_approveAll();
+    case 'lt_rejectPending':    return lt_rejectPending(p.id);
+    case 'lt_deleteRecord':     return lt_deleteRecord(p.id);
+    // ===== Combined =====
+    case 'getAllInitialData':   return getAllInitialData(p.systemType);
+    case 'getReportData':       return getReportData(p.systemType);
+    // ===== Backup =====
+    case 'backupAllData':       return backupAllData();
+    case 'importBackupData':    return importBackupData(p.json || p);
+    case 'clearAllData':        return clearAllData();
+    // ===== Drive =====
+    case 'uploadImageToDrive':  return uploadImageToDrive(p.base64Data, p.fileName);
+    // ===== Ping =====
+    case 'ping':                return { pong: new Date().toISOString() };
+    default: throw new Error('Unknown action: ' + action);
+  }
+}
+
 function getWebAppUrl() {
   return ScriptApp.getService().getUrl();
 }
 
+// include is no longer needed but kept for compatibility
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
 
-// ===================================================================
-// 🏗️ INIT - สร้างชีตอัตโนมัติเมื่อรันครั้งแรก
-// ===================================================================
 function initSheets() {
   Object.keys(SHEETS).forEach(function(key) {
     const name = SHEETS[key];

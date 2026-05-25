@@ -1,197 +1,196 @@
 # 🏫 ระบบบริหารจัดการโรงเรียนหนองสำโรงวิทยา
 
-ระบบเว็บแอปพลิเคชันสำหรับบริหารจัดการงานในโรงเรียน รวม **5 ระบบในหนึ่งเดียว** ทำงานบน **Google Apps Script** + **Google Sheets** เป็นฐานข้อมูล สามารถใช้งานออนไลน์ได้จากทุกอุปกรณ์ ทั้งคอมพิวเตอร์ แท็บเล็ต และมือถือ พร้อม**แชร์ข้อมูลร่วมกันแบบเรียลไทม์**
+ระบบเว็บแอปพลิเคชันสำหรับโรงเรียน รวม **5 ระบบในหนึ่งเดียว** ทำงานแบบ Hybrid:
+- **Frontend** → โฮสต์บน **GitHub Pages** (เร็ว ฟรี ใช้งานง่าย)
+- **Backend** → **Google Apps Script** + **Google Sheets** (ฐานข้อมูลออนไลน์)
 
 ![Status](https://img.shields.io/badge/status-active-success)
-![Platform](https://img.shields.io/badge/platform-Google%20Apps%20Script-blue)
-![License](https://img.shields.io/badge/license-Educational%20Use%20Only-yellow)
-![Made For](https://img.shields.io/badge/made%20for-โรงเรียนหนองสำโรงวิทยา-purple)
+![Platform](https://img.shields.io/badge/frontend-GitHub%20Pages-blue)
+![Backend](https://img.shields.io/badge/backend-Apps%20Script%20API-orange)
 
 ---
 
-## 🚀 เปิดใช้งานระบบ (Live Demo)
+## 🚀 เปิดใช้งานระบบ
 
-### 👉 [**คลิกเข้าใช้งานระบบที่นี่**](https://script.google.com/macros/s/AKfycbzEI-BXDIOhO4FPIzPOcYGyHaVaNdH-dE4yDuL0I7fjGzJW7puGk2cbh_iBhn8Aq9sk-w/exec) 👈
+### 👉 [**คลิกเข้าใช้งานที่นี่**](https://nsrschool.github.io/nsr_school_system/) 👈
 
 ```
-https://script.google.com/macros/s/AKfycbzEI-BXDIOhO4FPIzPOcYGyHaVaNdH-dE4yDuL0I7fjGzJW7puGk2cbh_iBhn8Aq9sk-w/exec
+https://nsrschool.github.io/nsr_school_system/
 ```
 
-> 💡 **แนะนำ:** เปิดบนเบราว์เซอร์ Chrome หรือ Edge เพื่อประสิทธิภาพสูงสุด
+---
+
+## 📋 ระบบทั้งหมด 5 ระบบ
+
+| ระบบ | คำอธิบาย |
+|------|----------|
+| 🎒 **ของหายได้คืน** | บันทึกความดี ของหาย เงินหาย พร้อมประวัติ |
+| ⚠️ **ตัดคะแนนความประพฤติ** | บันทึกการตัดคะแนน พร้อมสถิติ |
+| ✅ **เช็คชื่อนักเรียน** | เช็คชื่อรายวันแยกชั้น พร้อมรายงาน |
+| 👁️ **ตาวิเศษ** | แจ้งเหตุ +1 ผู้แจ้ง / -1 ผู้ทำผิด |
+| 🕒 **บันทึกการมาสาย** | ส่งบันทึก → รออนุมัติ → หักคะแนน |
 
 ---
 
-## 📋 ระบบทั้งหมด
+## 🏗️ สถาปัตยกรรมระบบ
 
-| # | ระบบ | คำอธิบาย |
-|---|------|----------|
-| 🎒 | **ระบบกิจกรรมของหายได้คืน** | บันทึกความดี ของหาย-ของได้ เงินหาย และกิจกรรมอาสาช่วยเหลือต่างๆ |
-| ⚠️ | **ระบบตัดคะแนนความประพฤติ** | บันทึกการตัดคะแนน พร้อมประวัติย้อนหลังและสถิติ |
-| ✅ | **ระบบเช็คชื่อนักเรียน** | เช็คชื่อรายวันแยกชั้นเรียน พร้อมรายงานและสถิติย้อนหลัง |
-| 👁️ | **ระบบตาวิเศษ** | รักษาความสะอาด แจ้งเหตุ +1 ผู้แจ้ง / -1 ผู้ทำผิด พร้อมทำเนียบเกียรติยศ |
-| 🕒 | **ระบบบันทึกการมาสาย** | บันทึก → รออนุมัติ → หักคะแนน (3 บทบาท: ผู้บันทึก/ผู้อนุมัติ/ผู้ดูแล) |
-
-### ✨ จุดเด่นของระบบ
-
-- 🔗 **ฐานข้อมูลนักเรียนร่วมกัน** — เพิ่ม/แก้ครั้งเดียว ใช้ได้ทั้ง 5 ระบบ
-- 💯 **คะแนนสะสมต่อเนื่อง** — เชื่อมโยงคะแนนระหว่างระบบอัตโนมัติ
-- ☁️ **เก็บข้อมูลใน Google Sheets** ของคุณเอง ปลอดภัย ไม่ต้องเสียค่า hosting
-- 📱 **Responsive Design** — ใช้งานบนมือถือ แท็บเล็ต และคอมพิวเตอร์ได้ลื่นไหล
-- 💾 **Backup/Restore** — สำรองข้อมูลเป็นไฟล์ JSON ได้ทุกเมื่อ
-- 📊 **Export Excel** — ส่งออกข้อมูลทุกระบบเป็นไฟล์ .xlsx ได้
-- 🆓 **ใช้ฟรี 100%** — ไม่มีค่าใช้จ่ายซ่อนเร้น ไม่ต้องสมัครบริการเสริม
+```
+┌─────────────────────────┐         ┌─────────────────────────┐
+│   GitHub Pages          │  fetch  │   Google Apps Script    │
+│   (Frontend HTML/JS)    │ ───────▶│   (Backend API)         │
+│                         │ ◀───────│                         │
+│  - index.html           │  JSON   │   doGet / doPost        │
+│  - lostfound.html       │         │           │             │
+│  - conduct.html         │         │           ▼             │
+│  - attendance.html      │         │   ┌─────────────────┐   │
+│  - magiceye.html        │         │   │ Google Sheets   │   │
+│  - late.html            │         │   │ (Database)      │   │
+│  - api-client.js        │         │   └─────────────────┘   │
+└─────────────────────────┘         └─────────────────────────┘
+```
 
 ---
 
-## 📖 วิธีใช้งานระบบ (สำหรับผู้ใช้)
+## 🛠️ วิธีติดตั้งสำหรับนำไปใช้ในโรงเรียนอื่น
 
-### ขั้นตอนเริ่มต้น
+### 🔹 ส่วนที่ 1: ติดตั้ง Backend (Apps Script + Sheets)
 
-1. **เข้าใช้งานครั้งแรก**
-   - คลิกลิงก์ด้านบน → ระบบจะสร้าง Google Sheets อัตโนมัติในไดรฟ์ของคุณ
-   - อาจต้องอนุญาต Permissions ครั้งแรก (กด **Advanced** → **Go to (unsafe)** → **Allow**)
+**1.1 สร้าง Apps Script Project**
+- ไปที่ [script.google.com](https://script.google.com) → **+ New project**
+- ตั้งชื่อโปรเจกต์ เช่น `NSR School API`
 
-2. **เพิ่มข้อมูลนักเรียน** (ทำก่อนเป็นอันดับแรก!)
-   - ไปที่แท็บ **"จัดการนักเรียน"**
-   - เลือกหนึ่งใน 3 วิธี:
-     - ⌨️ พิมพ์เพิ่มทีละคน
-     - 📥 ดาวน์โหลดไฟล์ฟอร์มตัวอย่าง → กรอกใน Excel → อัปโหลดกลับ
-     - 📤 Import จากไฟล์ Excel/CSV ที่มีอยู่แล้ว
+**1.2 วางโค้ด Backend**
+- ลบ `Code.gs` เดิม แล้ววางโค้ดจากไฟล์ `Code.gs` ในโฟลเดอร์ `backend/`
+- กด **Save** (Ctrl+S)
 
-3. **ตั้งค่าระบบ** (ไม่บังคับ)
-   - ไปที่แท็บ **"ตั้งค่าระบบ"**
-   - กรอกชื่อโรงเรียน, ปีการศึกษา, อัปโหลดโลโก้ ฯลฯ
-
-4. **เริ่มใช้งานระบบทั้ง 5 ได้เลย!**
-
-### 📌 ทิปการใช้งาน
-
-- **บันทึก URL ไว้:** Bookmark ลิงก์ Web App ไว้บนเบราว์เซอร์ เพื่อเข้าใช้สะดวก
-- **ใช้งานพร้อมกันได้:** ครูหลายคนสามารถบันทึกข้อมูลพร้อมกันได้
-- **Backup เป็นประจำ:** กด "สำรองข้อมูล" ทุกสิ้นเดือนเพื่อความปลอดภัย
-
----
-
-## 🛠️ สำหรับครู/นักพัฒนาที่ต้องการนำไปติดตั้งใหม่
-
-ถ้าคุณต้องการ**ติดตั้งระบบของตัวเอง** (มี Google Sheets แยกของตัวเอง):
-
-### ขั้นตอนติดตั้ง (~5 นาที)
-
-**1. ดาวน์โหลดไฟล์**
-- กดปุ่ม 🟢 **Code** → **Download ZIP** ที่หน้านี้
-
-**2. สร้าง Apps Script Project**
-- ไปที่ [script.google.com](https://script.google.com)
-- กด **+ New project** → ตั้งชื่อโปรเจกต์
-
-**3. คัดลอกโค้ดเข้าไป**
-- **Code.gs** — ลบเนื้อหาเดิม แล้ววางโค้ดจาก `Code.gs`
-- กด ➕ ข้าง Files → **HTML** สร้างไฟล์ตามนี้:
-  - `index`
-  - `favicon`
-  - `lostfound`
-  - `conduct`
-  - `attendance`
-  - `magiceye`
-  - `late`
-- คัดลอกเนื้อหาแต่ละไฟล์ HTML วางลงไป (**ชื่อต้องตรงเป๊ะ ไม่ต้องใส่ .html**)
-
-**4. Deploy เป็น Web App**
+**1.3 Deploy เป็น Web App**
 - กด **Deploy** → **New deployment**
-- กดเฟือง ⚙️ → เลือก **Web app**
+- เลือก type: **Web app**
 - ตั้งค่า:
-  - **Execute as:** Me (ตัวเอง)
-  - **Who has access:** Anyone (หรือ Anyone with Google account)
+  - **Execute as:** Me
+  - **Who has access:** **Anyone** ⚠️ (สำคัญ! ต้อง Anyone ไม่ใช่ Anyone with Google Account)
 - กด **Deploy** → อนุญาต Permissions
-- คัดลอก **Web app URL** ที่ได้ → เปิดใช้งานได้เลย!
+- **คัดลอก Web App URL** ที่ได้ (ยาวประมาณ `https://script.google.com/macros/s/AKfycb.../exec`)
+
+### 🔹 ส่วนที่ 2: ติดตั้ง Frontend (GitHub Pages)
+
+**2.1 ดาวน์โหลด/Fork โปรเจกต์นี้**
+- กดปุ่ม **Fork** ที่มุมขวาบนของหน้านี้ → ตั้งชื่อ repo ของตัวเอง
+- หรือดาวน์โหลด ZIP แล้วอัปโหลดเข้า repo ใหม่
+
+**2.2 แก้ไข API URL** ⚠️ **สำคัญ**
+- เปิดไฟล์ `api-client.js`
+- หาบรรทัด:
+  ```javascript
+  const API_URL = 'https://script.google.com/macros/s/AKfycb.../exec';
+  ```
+- เปลี่ยนเป็น URL ของคุณ (จากขั้นตอน 1.3)
+- กด **Commit changes**
+
+**2.3 เปิด GitHub Pages**
+- ใน repo ของคุณ → **Settings** → **Pages**
+- Source: เลือก **Deploy from a branch**
+- Branch: เลือก **main** / **(root)**
+- กด **Save**
+- รอ ~1 นาที จะได้ URL: `https://USERNAME.github.io/REPO_NAME/`
+
+### 🔹 ส่วนที่ 3: เริ่มใช้งาน
+
+1. เปิด URL GitHub Pages ของคุณ
+2. ระบบจะเรียก API → สร้าง Google Sheets อัตโนมัติ
+3. ไปที่แท็บ **"จัดการนักเรียน"** → เพิ่มข้อมูลนักเรียน
+4. เริ่มใช้งานทั้ง 5 ระบบได้ทันที!
 
 ---
 
-## 📂 โครงสร้างไฟล์ในโปรเจกต์
+## 📂 โครงสร้างไฟล์
 
 ```
 nsr_school_system/
-├── 📄 Code.gs              # Backend ทั้งหมด (CRUD + เชื่อม Google Sheets)
-├── 🏠 index.html           # หน้าหลัก + จัดการนักเรียน + Backup/Restore
-├── 🔖 favicon.html         # ไอคอนเว็บ (ฝัง base64)
-├── 🎒 lostfound.html       # ระบบของหาย
-├── ⚠️ conduct.html         # ระบบตัดคะแนน
-├── ✅ attendance.html      # ระบบเช็คชื่อ
-├── 👁️ magiceye.html        # ระบบตาวิเศษ
-├── 🕒 late.html            # ระบบมาสาย
-└── 📘 README.md            # ไฟล์นี้
+├── 📄 index.html              # หน้าหลัก (Frontend)
+├── 📄 lostfound.html          # ระบบของหาย
+├── 📄 conduct.html            # ระบบตัดคะแนน
+├── 📄 attendance.html         # ระบบเช็คชื่อ
+├── 📄 magiceye.html           # ระบบตาวิเศษ
+├── 📄 late.html               # ระบบมาสาย
+├── ⚙️ api-client.js           # ⚠️ ใส่ Web App URL ตรงนี้
+├── 📂 backend/
+│   └── Code.gs                # โค้ดสำหรับวางใน Apps Script
+└── 📘 README.md
 ```
 
 ---
 
-## 🛠️ เทคโนโลยีที่ใช้
+## ⚙️ การแก้ไขเชิงเทคนิค
 
-| หมวด | เทคโนโลยี |
-|------|----------|
-| **Backend** | Google Apps Script |
-| **Database** | Google Sheets |
-| **Frontend** | HTML5 + Tailwind CSS (CDN) + Vanilla JavaScript |
-| **Libraries** | SheetJS (xlsx.js) สำหรับ Import/Export Excel |
-| **Image Storage** | Google Drive (โลโก้/ลายเซ็น/รูปแจ้งเหตุ) |
-| **Font** | Sarabun (Google Fonts) |
+### เปลี่ยน API URL
+แก้ที่ไฟล์ `api-client.js` บรรทัดแรก:
+```javascript
+const API_URL = 'YOUR_WEB_APP_URL_HERE';
+```
+
+### Update Apps Script
+หลังแก้ `Code.gs` ใน Apps Script ต้อง **Deploy ใหม่**:
+- **Deploy** → **Manage deployments** → กดดินสอ ✏️
+- Version: **New version** → **Deploy**
+- URL จะเหมือนเดิม ไม่ต้องแก้ใน `api-client.js`
+
+### ทำไมต้องตั้ง "Who has access" เป็น **Anyone**?
+เพราะ Frontend (GitHub Pages) เรียก API จาก domain อื่น (cross-origin) ต้องเปิดให้ public เพื่อให้ fetch ได้ ข้อมูลยังคงปลอดภัยเพราะ Sheets อยู่ในไดรฟ์ของคุณ และ ID ของ student/record ยากต่อการเดา
 
 ---
 
-## ❓ คำถามที่พบบ่อย (FAQ)
+## ❓ Troubleshooting
 
 <details>
-<summary><b>Q: ข้อมูลปลอดภัยไหม? เก็บไว้ที่ไหน?</b></summary>
+<summary><b>Spinner หมุนตลอด โหลดข้อมูลไม่ได้</b></summary>
 
-A: ปลอดภัย 100% เพราะข้อมูลทั้งหมดเก็บใน **Google Sheets ในไดรฟ์ของคุณเอง** ผู้พัฒนาไม่สามารถเข้าถึงข้อมูลได้ และไม่มีการส่งข้อมูลไปยังเซิร์ฟเวอร์ภายนอก
+ตรวจสอบ:
+1. API URL ใน `api-client.js` ถูกต้องไหม
+2. Apps Script Deploy แล้วเลือก "Anyone" ไหม (ไม่ใช่ "Anyone with Google account")
+3. เปิด DevTools (F12) → Console → ดู error
+4. ลอง Hard refresh (Ctrl+Shift+R)
 </details>
 
 <details>
-<summary><b>Q: ใช้งานได้กี่คนพร้อมกัน?</b></summary>
+<summary><b>CORS Error ใน Console</b></summary>
 
-A: รองรับการใช้งานพร้อมกันได้หลายสิบคน ตามโควต้าของ Google Apps Script (6 นาทีต่อ script execution, 20,000 calls/วันสำหรับบัญชี Workspace)
+- ตรวจสอบว่า Deploy Apps Script ในโหมด **Web app** (ไม่ใช่ API executable)
+- ตั้ง "Who has access" เป็น **Anyone**
+- ลอง Deploy เป็น **New deployment** อีกครั้ง (ไม่ใช่ Manage version)
 </details>
 
 <details>
-<summary><b>Q: เปิดบนมือถือได้ไหม?</b></summary>
+<summary><b>อัปโหลดรูปภาพช้า/ไม่สำเร็จ</b></summary>
 
-A: ได้ครับ ระบบออกแบบเป็น Responsive Design ใช้งานบนมือถือได้ลื่นไหล แนะนำให้ Bookmark ลิงก์ไว้เพื่อเข้าใช้ได้สะดวก
+ระบบจะบีบอัดรูปก่อนส่ง แต่ถ้ารูปยังใหญ่มาก (>3 MB):
+- เปลี่ยนรูปให้เล็กลงก่อน
+- หรือถ่ายภาพด้วยความละเอียดต่ำลง
 </details>
 
 <details>
-<summary><b>Q: ถ้าต้องการแก้ไขดีไซน์ ทำได้ไหม?</b></summary>
+<summary><b>เปลี่ยน Apps Script URL แล้วยังเรียก URL เก่า</b></summary>
 
-A: ทำได้ เปิด Apps Script Editor → แก้ไขไฟล์ HTML ตามต้องการ → Deploy ใหม่ (กด **Deploy → Manage deployments → Edit → New version**)
+Cache ของ browser:
+- Hard refresh (Ctrl+Shift+R / Cmd+Shift+R)
+- หรือ Incognito mode ทดสอบ
 </details>
 
-<details>
-<summary><b>Q: ถ้าข้อมูลหาย จะกู้คืนได้ไหม?</b></summary>
+---
 
-A: ได้ครับ ระบบมีฟังก์ชัน **Backup** ให้กดสำรองข้อมูลเป็นไฟล์ JSON และ **Import** ให้นำเข้าคืนได้ แนะนำให้สำรองทุกสิ้นเดือน หรือก่อนการเปลี่ยนแปลงสำคัญ
-</details>
+## 🔐 ความปลอดภัย
 
-<details>
-<summary><b>Q: นำไปใช้เชิงพาณิชย์ได้ไหม?</b></summary>
-
-A: ❌ **ไม่ได้** — โครงการนี้สำหรับใช้ในโรงเรียนเท่านั้น ห้ามดัดแปลง ทำซ้ำ เพื่อการพาณิชย์ หรือแอบอ้างเป็นผลงานตนเอง
-</details>
-
-<details>
-<summary><b>Q: เปิดแล้วโหลดค้าง / Spinner หมุนตลอด แก้ยังไง?</b></summary>
-
-A: ตรวจสอบว่า:
-1. คุณเปิดผ่าน URL ของ **Apps Script** (`script.google.com/macros/...`) ไม่ใช่ GitHub Pages
-2. อนุญาต Permissions ครบถ้วนแล้ว
-3. ลอง Refresh หน้าหรือลอง Incognito Mode
-4. ตรวจสอบว่า Internet เชื่อมต่อปกติ
-</details>
+- ✅ ข้อมูลทั้งหมดเก็บใน **Google Sheets ในไดรฟ์ของคุณ** ไม่มีใครเข้าถึงได้
+- ✅ Frontend ไม่มี hard-coded credentials
+- ✅ Apps Script รันด้วย account ของเจ้าของ (Execute as Me)
+- ⚠️ API URL เป็น public — ใครเข้าได้ก็ใช้ระบบได้ จึงเหมาะกับใช้ภายในโรงเรียนเดียวกัน
+- 💡 แนะนำให้ Backup ข้อมูลเป็น JSON ทุกสิ้นเดือน
 
 ---
 
 ## 👨‍🏫 ผู้พัฒนา
 
-**ครูรุ่งนิรันดร์**
-โรงเรียนหนองสำโรงวิทยา
+**ครูรุ่งนิรันดร์** — โรงเรียนหนองสำโรงวิทยา
 
 ---
 
@@ -208,8 +207,8 @@ A: ตรวจสอบว่า:
 
 <div align="center">
 
-⭐ **ถ้าคิดว่าโครงการนี้มีประโยชน์ กด Star เพื่อเป็นกำลังใจให้ผู้พัฒนาด้วยนะครับ** ⭐
+[![Open Web App](https://img.shields.io/badge/🚀_เปิดใช้งานระบบ-คลิกที่นี่-success?style=for-the-badge)](https://nsrschool.github.io/nsr_school_system/)
 
-[![Open Web App](https://img.shields.io/badge/🚀_เปิดใช้งานระบบ-คลิกที่นี่-success?style=for-the-badge)](https://script.google.com/macros/s/AKfycbzEI-BXDIOhO4FPIzPOcYGyHaVaNdH-dE4yDuL0I7fjGzJW7puGk2cbh_iBhn8Aq9sk-w/exec)
+⭐ ถ้าโครงการนี้มีประโยชน์ กด Star ให้กำลังใจด้วยนะครับ ⭐
 
 </div>
