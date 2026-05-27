@@ -6,6 +6,7 @@
   <title>✅ ระบบเช็คชื่อนักเรียน - หนองสำโรงวิทยา</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Sarabun', sans-serif; background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); min-height: 100vh; }
@@ -70,7 +71,7 @@
   <!-- ============ TAB: CHECK ============ -->
   <div id="tab-content-check" class="tab-content">
     <div class="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-4 md:p-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1">📅 วันที่</label>
           <input type="date" id="checkDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg" onchange="loadClassStatus()">
@@ -80,10 +81,6 @@
           <select id="checkClass" class="w-full px-3 py-2 border border-gray-300 rounded-lg" onchange="loadClassStatus()">
             <option value="">-- เลือกชั้น --</option>
           </select>
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">👤 ผู้บันทึก</label>
-          <input type="text" id="checkRecorder" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="ชื่อผู้บันทึก">
         </div>
       </div>
 
@@ -145,6 +142,28 @@
     <div class="bg-white/95 backdrop-blur rounded-2xl shadow-xl p-4 md:p-6">
       <h2 class="text-lg font-bold text-gray-800 mb-3">📊 สรุปรายงาน</h2>
       <div id="reportContent"></div>
+    </div>
+  </div>
+
+  <!-- ========== SUMMARY MODAL ========== -->
+  <div id="summaryModal" class="hidden fixed inset-0 bg-black/60 z-40 flex items-start justify-center p-3 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-4">
+      <!-- Header -->
+      <div class="sticky top-0 bg-white border-b border-gray-200 p-3 flex justify-between items-center rounded-t-2xl z-10">
+        <h3 class="text-base font-bold text-gray-800">📋 สรุปการเช็คชื่อ</h3>
+        <button onclick="closeSummaryModal()" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+      </div>
+      <!-- Body -->
+      <div id="summaryContent" class="p-3"></div>
+      <!-- Action Bar -->
+      <div class="sticky bottom-0 bg-white border-t border-gray-200 p-3 flex gap-2 rounded-b-2xl">
+        <button onclick="closeSummaryModal()" class="flex-1 px-3 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium">
+          ปิด
+        </button>
+        <button onclick="captureSummary()" class="flex-[2] px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-sm font-bold shadow-lg flex items-center justify-center gap-2">
+          📸 แคปภาพ ส่ง LINE
+        </button>
+      </div>
     </div>
   </div>
 
@@ -304,9 +323,7 @@ function updateSummary() {
 function saveAttendance() {
   const date = document.getElementById('checkDate').value;
   const cls = document.getElementById('checkClass').value;
-  const recorder = document.getElementById('checkRecorder').value.trim();
   if (!date || !cls) { toast('กรุณาเลือกวันที่และชั้นเรียน', 'warn'); return; }
-  if (!recorder) { toast('กรุณาใส่ชื่อผู้บันทึก', 'warn'); return; }
 
   const students = allStudents.filter(s => s.classLevel === cls);
   const records = students.map(s => ({
@@ -316,7 +333,7 @@ function saveAttendance() {
     classLevel: s.classLevel,
     status: currentStatus[s.id] || 'present',
     note: currentNotes[s.id] || '',
-    recorder: recorder
+    recorder: ''
   }));
 
   showLoading('บันทึก...');
@@ -325,10 +342,12 @@ function saveAttendance() {
       hideLoading();
       if (res.success) {
         toast(res.message || 'บันทึกสำเร็จ', 'success');
-        // refresh
+        // refresh records
         GAS.call('at_getRecords', { date: null })
           .then(function(rs) { allRecords = rs || []; })
           .catch(function(){});
+        // เปิดหน้าสรุป
+        showSummaryModal(date, cls, students);
       } else {
         toast(res.message || 'บันทึกล้มเหลว', 'error');
       }
@@ -337,6 +356,121 @@ function saveAttendance() {
       hideLoading();
       toast('ผิดพลาด: ' + err.message, 'error');
     });
+}
+
+// ============ SUMMARY MODAL & SCREENSHOT ============
+function showSummaryModal(date, cls, students) {
+  // จัดกลุ่มตามสถานะ
+  const groups = { present: [], absent: [], leave: [], late: [] };
+  students.sort((a, b) => Number(a.no || 0) - Number(b.no || 0));
+  students.forEach(s => {
+    const st = currentStatus[s.id] || 'present';
+    if (groups[st]) groups[st].push({
+      no: s.no || '-',
+      name: s.fullName || (s.firstName + ' ' + s.lastName),
+      note: currentNotes[s.id] || ''
+    });
+  });
+
+  const dateObj = new Date(date);
+  const thDate = dateObj.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const total = students.length;
+
+  // สร้างกล่อง section ของแต่ละสถานะ (ใช้ inline styles ให้ html2canvas แคปสีถูกต้อง)
+  function section(title, emoji, items, colors) {
+    return `
+      <div style="margin-bottom: 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;background:${colors.bg};border-left:4px solid ${colors.border};padding:8px 12px;border-radius:8px 8px 0 0;">
+          <span style="font-weight:bold;color:${colors.title};">${emoji} ${title}</span>
+          <span style="font-weight:bold;color:${colors.title};font-size:16px;">${items.length} คน</span>
+        </div>
+        <div style="background:white;border:1px solid ${colors.borderLight};border-top:0;border-radius:0 0 8px 8px;padding:10px;font-size:13px;">
+          ${items.length === 0
+            ? '<p style="color:#9ca3af;text-align:center;padding:6px 0;">- ไม่มี -</p>'
+            : items.map(it => `<div style="padding:4px 0;border-bottom:1px solid #f3f4f6;">
+                <span style="font-weight:bold;color:${colors.title};">เลขที่ ${it.no}</span>
+                <span style="color:#1f2937;margin-left:8px;">${it.name}</span>
+                ${it.note ? `<span style="font-size:11px;color:#6b7280;margin-left:8px;">(${it.note})</span>` : ''}
+              </div>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  const colorMap = {
+    emerald: { bg:'#d1fae5', border:'#10b981', borderLight:'#a7f3d0', title:'#065f46' },
+    red:     { bg:'#fee2e2', border:'#ef4444', borderLight:'#fecaca', title:'#991b1b' },
+    amber:   { bg:'#fef3c7', border:'#f59e0b', borderLight:'#fde68a', title:'#92400e' },
+    purple:  { bg:'#ede9fe', border:'#8b5cf6', borderLight:'#ddd6fe', title:'#5b21b6' }
+  };
+
+  document.getElementById('summaryContent').innerHTML = `
+    <div id="summaryCapture" style="background: white; padding: 20px;">
+      <div class="text-center mb-4 pb-3 border-b-2 border-blue-500">
+        <h2 style="color:#1e40af;" class="text-xl font-bold">📋 สรุปการเช็คชื่อ</h2>
+        <p class="text-base text-gray-700 mt-1">ชั้น ${cls}</p>
+        <p class="text-sm text-gray-600">${thDate}</p>
+      </div>
+      <div class="grid grid-cols-4 gap-2 mb-4 text-center text-xs">
+        <div style="background:#d1fae5;border:1px solid #10b981;" class="rounded-lg p-2">
+          <p style="color:#047857;">มา</p>
+          <p style="color:#065f46;font-size:20px;" class="font-bold">${groups.present.length}</p>
+        </div>
+        <div style="background:#fee2e2;border:1px solid #ef4444;" class="rounded-lg p-2">
+          <p style="color:#b91c1c;">ขาด</p>
+          <p style="color:#7f1d1d;font-size:20px;" class="font-bold">${groups.absent.length}</p>
+        </div>
+        <div style="background:#fef3c7;border:1px solid #f59e0b;" class="rounded-lg p-2">
+          <p style="color:#b45309;">ลา</p>
+          <p style="color:#78350f;font-size:20px;" class="font-bold">${groups.leave.length}</p>
+        </div>
+        <div style="background:#ede9fe;border:1px solid #8b5cf6;" class="rounded-lg p-2">
+          <p style="color:#6d28d9;">มาสาย</p>
+          <p style="color:#4c1d95;font-size:20px;" class="font-bold">${groups.late.length}</p>
+        </div>
+      </div>
+      ${section('นักเรียนมา', '✅', groups.present, colorMap.emerald)}
+      ${section('นักเรียนขาด', '❌', groups.absent, colorMap.red)}
+      ${section('นักเรียนลา', '📝', groups.leave, colorMap.amber)}
+      ${section('นักเรียนมาสาย', '⏰', groups.late, colorMap.purple)}
+      <div class="text-center text-xs text-gray-500 mt-3 pt-2 border-t border-gray-200">
+        จำนวนนักเรียนทั้งหมด ${total} คน | บันทึก ณ ${new Date().toLocaleString('th-TH')}
+      </div>
+    </div>
+  `;
+  document.getElementById('summaryModal').classList.remove('hidden');
+}
+
+function closeSummaryModal() {
+  document.getElementById('summaryModal').classList.add('hidden');
+}
+
+function captureSummary() {
+  const target = document.getElementById('summaryCapture');
+  if (!target) { toast('ไม่พบส่วนสรุป', 'error'); return; }
+  if (typeof html2canvas === 'undefined') {
+    toast('กำลังโหลด library กรุณารอสักครู่...', 'info');
+    return;
+  }
+  showLoading('กำลังแคปภาพ...');
+  html2canvas(target, {
+    backgroundColor: '#ffffff',
+    scale: 2,
+    useCORS: true,
+    logging: false
+  }).then(function(canvas) {
+    hideLoading();
+    const cls = document.getElementById('checkClass').value || 'ห้อง';
+    const date = document.getElementById('checkDate').value || new Date().toISOString().slice(0,10);
+    const link = document.createElement('a');
+    link.download = `เช็คชื่อ_${cls}_${date}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast('ดาวน์โหลดสำเร็จ! พร้อมส่ง LINE 📱', 'success');
+  }).catch(function(err) {
+    hideLoading();
+    toast('แคปภาพล้มเหลว: ' + err.message, 'error');
+  });
 }
 
 // ============ HISTORY ============
