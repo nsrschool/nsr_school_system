@@ -209,7 +209,6 @@
   <!-- Footer -->
   <footer class="text-center text-white/90 text-xs mt-6 pb-4">
     <p class="mb-1">© พัฒนาโดย ครูรุ่งนิรันดร์ | สำหรับใช้ภายในโรงเรียนหนองสำโรงวิทยาเท่านั้น</p>
-    <p>ห้ามทำซ้ำ ดัดแปลง เพื่อการพาณิชย์ หรือแอบอ้างเป็นผลงานตนเองโดยเด็ดขาด</p>
   </footer>
 
 </div>
@@ -303,22 +302,32 @@ function getActivityLabel(a) {
 
 function submitRecord(e) {
   e.preventDefault();
+  // ตรวจสอบว่าโหลดข้อมูลเสร็จแล้ว
+  if (allStudents.length === 0) {
+    toast('ข้อมูลนักเรียนยังไม่พร้อม กรุณารอสักครู่...', 'warning');
+    return;
+  }
   const studentId = document.getElementById('studentSelect').value;
   if (!studentId) { toast('กรุณาเลือกนักเรียน', 'warning'); return; }
   const student = allStudents.find(s => s.id === studentId);
+  if (!student) { toast('ไม่พบข้อมูลนักเรียนนี้ในระบบ', 'error'); return; }
   const activity = document.getElementById('recordForm').dataset.activity;
   if (!activity) { toast('กรุณาเลือกประเภทกิจกรรม', 'warning'); return; }
+  const points = Number(document.getElementById('pointsInput').value);
+  if (!points || points <= 0) { toast('กรุณากรอกคะแนนมากกว่า 0', 'warning'); return; }
+
+  const fullName = student.fullName || ((student.firstName || '') + ' ' + (student.lastName || '')).trim();
 
   const data = {
     date: document.getElementById('dateInput').value,
     studentId: studentId,
-    studentName: student ? student.fullName : '',
-    classLevel: student ? student.classLevel : '',
+    studentName: fullName,
+    classLevel: student.classLevel || '',
     activity: activity,
     itemDescription: document.getElementById('itemDescription').value,
     moneyAmount: document.getElementById('moneyAmount').value,
     description: document.getElementById('description').value,
-    points: Number(document.getElementById('pointsInput').value)
+    points: points
   };
 
   const editId = document.getElementById('editingId').value;
@@ -353,6 +362,17 @@ function reloadRecords() {
         .catch(function(err){ console.error(err); });
 }
 
+function getStudentName(r) {
+  // ถ้ามีชื่ออยู่ในเรคคอร์ดอยู่แล้ว ใช้เลย
+  if (r.studentName && String(r.studentName).trim()) return r.studentName;
+  // ถ้าไม่มี ลองหาจาก studentId ใน allStudents
+  if (r.studentId) {
+    const s = allStudents.find(x => x.id === r.studentId);
+    if (s) return s.fullName || ((s.firstName || '') + ' ' + (s.lastName || '')).trim();
+  }
+  return '-';
+}
+
 function renderRecordTable() {
   const tbody = document.getElementById('recordTableBody');
   const sorted = [...allRecords].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -360,7 +380,7 @@ function renderRecordTable() {
   tbody.innerHTML = sorted.map(r => `
     <tr class="border-t hover:bg-gray-50">
       <td class="p-2">${r.date || '-'}</td>
-      <td class="p-2">${r.studentName || '-'}</td>
+      <td class="p-2">${getStudentName(r)}</td>
       <td class="p-2">${getActivityLabel(r.activity)}</td>
       <td class="p-2 text-center font-bold text-amber-600">${r.points}</td>
       <td class="p-2 text-center">
@@ -415,10 +435,10 @@ function renderItems() {
   const claimed = allRecords.filter(r => r.activity === 'lost-found' && r.status === 'claimed');
   document.getElementById('remainingItemsBody').innerHTML = remaining.length === 0
     ? '<tr><td colspan="4" class="p-4 text-center text-gray-400">ไม่มีของเหลือ</td></tr>'
-    : remaining.map(r => `<tr class="border-t"><td class="p-2">${r.date}</td><td class="p-2">${r.itemDescription || '-'}</td><td class="p-2">${r.studentName}</td><td class="p-2 text-center"><button onclick="openClaim('${r.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded">รับคืน</button></td></tr>`).join('');
+    : remaining.map(r => `<tr class="border-t"><td class="p-2">${r.date}</td><td class="p-2">${r.itemDescription || '-'}</td><td class="p-2">${getStudentName(r)}</td><td class="p-2 text-center"><button onclick="openClaim('${r.id}')" class="bg-green-500 text-white text-xs px-2 py-1 rounded">รับคืน</button></td></tr>`).join('');
   document.getElementById('claimedItemsBody').innerHTML = claimed.length === 0
     ? '<tr><td colspan="4" class="p-4 text-center text-gray-400">ยังไม่มีประวัติการรับคืน</td></tr>'
-    : claimed.map(r => `<tr class="border-t"><td class="p-2">${r.claimedDate || '-'}</td><td class="p-2">${r.itemDescription || '-'}</td><td class="p-2">${r.claimedBy || '-'}</td><td class="p-2">${r.studentName}</td></tr>`).join('');
+    : claimed.map(r => `<tr class="border-t"><td class="p-2">${r.claimedDate || '-'}</td><td class="p-2">${r.itemDescription || '-'}</td><td class="p-2">${r.claimedBy || '-'}</td><td class="p-2">${getStudentName(r)}</td></tr>`).join('');
 }
 function openClaim(id) {
   document.getElementById('claimItemId').value = id;
@@ -444,8 +464,9 @@ function confirmClaim() {
 function renderTopStudents() {
   const scores = {};
   allRecords.forEach(r => {
-    if (!r.studentName) return;
-    scores[r.studentName] = (scores[r.studentName] || 0) + Number(r.points || 0);
+    const name = getStudentName(r);
+    if (!name || name === '-') return;
+    scores[name] = (scores[name] || 0) + Number(r.points || 0);
   });
   const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]).slice(0, 10);
   const html = sorted.length === 0
