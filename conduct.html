@@ -197,6 +197,28 @@ let allRecords = [];
 let webAppUrl = '';
 let isOther = false;
 
+// ===== GAS Fallback =====
+// ถ้า api-client.js ไม่โหลด (ไฟล์หาย/ผิดเวอร์ชัน) ให้สร้าง GAS เองพร้อม URL ฝังในตัว
+// ⚠️ ถ้าเปลี่ยน Web App URL ใหม่ ต้องแก้ทั้งที่นี่และใน api-client.js
+if (typeof GAS === 'undefined' || !GAS || !GAS.call) {
+  window.GAS = (function() {
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzEI-BXDIOhO4FPIzPOcYGyHaVaNdH-dE4yDuL0I7fjGzJW7puGk2cbh_iBhn8Aq9sk-w/exec';
+    function call(action, payload) {
+      return fetch(API_URL, {
+        method: 'POST',
+        mode: 'cors',
+        redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: action, payload: payload || {} })
+      })
+      .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+      .then(function(result) { if (!result.ok) throw new Error(result.error || 'API error'); return result.data; });
+    }
+    return { URL: API_URL, call: call };
+  })();
+  console.log('[conduct] ใช้ GAS fallback (ฝัง URL ในตัว)');
+}
+
 function showLoading(t) { document.getElementById('loadingText').textContent = t || 'กำลังโหลด...'; document.getElementById('loadingOverlay').classList.remove('hidden'); }
 function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
 function toast(msg, type) {
@@ -223,8 +245,16 @@ function loadAll() {
       renderRecords();
       updateStats();
       document.getElementById('dateInput').valueAsDate = new Date();
+      if (allStudents.length === 0) {
+        toast('⚠️ ไม่พบข้อมูลนักเรียน! กรุณาเพิ่มนักเรียนในระบบก่อน', 'warning');
+      } else {
+        toast('โหลดข้อมูลนักเรียน ' + allStudents.length + ' คนสำเร็จ', 'success');
+      }
     })
-    .catch(function(e) { hideLoading(); toast(e.message, 'error'); });
+    .catch(function(e) {
+      hideLoading();
+      toast('❌ เชื่อมต่อฐานข้อมูลไม่ได้: ' + e.message, 'error');
+    });
 
   // โหลดเกณฑ์คะแนนจาก Settings
   GAS.call('getSettings', {})
