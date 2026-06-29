@@ -128,6 +128,7 @@
 
       <div class="flex gap-2 mb-2">
         <button onclick="exportExcel()" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded">📊 ส่งออก Excel</button>
+        <button onclick="cleanBadRecords()" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs py-2 rounded">🧹 ล้างรายการเสีย</button>
       </div>
 
       <h3 class="text-sm font-bold text-gray-700 mt-3 mb-1">ประวัติล่าสุด</h3>
@@ -327,6 +328,33 @@ function delRec(id) {
   GAS.call('cd_deleteRecord', { id: id })
     .then(function(r) { hideLoading(); toast(r.message, 'success'); reload(); })
     .catch(function(e) { hideLoading(); toast(e.message, 'error'); });
+}
+
+// ลบ "รายการเสีย" - รายการที่ไม่มีชื่อนักเรียนและไม่มี studentId (ข้อมูลขยะจากเวอร์ชันเก่า)
+function cleanBadRecords() {
+  const bad = allRecords.filter(function(r) {
+    const noName = !r.studentName || !String(r.studentName).trim();
+    const noId = !r.studentId || !String(r.studentId).trim();
+    return noName && noId;
+  });
+  if (bad.length === 0) { toast('ไม่พบรายการเสีย ข้อมูลสะอาดดีแล้ว', 'success'); return; }
+  if (!confirm('พบรายการเสีย (ไม่มีชื่อนักเรียน) จำนวน ' + bad.length + ' รายการ\nต้องการลบทั้งหมดหรือไม่?')) return;
+
+  showLoading('กำลังลบ ' + bad.length + ' รายการ...');
+  // ลบทีละรายการแบบต่อเนื่อง
+  let i = 0;
+  function deleteNext() {
+    if (i >= bad.length) {
+      hideLoading();
+      toast('ล้างรายการเสีย ' + bad.length + ' รายการสำเร็จ', 'success');
+      reload();
+      return;
+    }
+    GAS.call('cd_deleteRecord', { id: bad[i].id })
+      .then(function() { i++; deleteNext(); })
+      .catch(function() { i++; deleteNext(); });
+  }
+  deleteNext();
 }
 
 function updateStats() {
