@@ -72,16 +72,12 @@
         </div>
 
         <div class="mb-3">
-          <label class="block text-sm font-medium text-gray-700 mb-2">ประเภทความผิด:</label>
-          <div class="grid grid-cols-2 gap-2">
-            <button type="button" onclick="selectViolation('มาสาย',5)" data-vio="มาสาย" class="violation-btn bg-yellow-100 hover:bg-yellow-200 text-yellow-800 p-2 rounded text-xs font-medium">มาสาย (5)</button>
-            <button type="button" onclick="selectViolation('แต่งกายผิด',10)" data-vio="แต่งกายผิด" class="violation-btn bg-orange-100 hover:bg-orange-200 text-orange-800 p-2 rounded text-xs font-medium">แต่งกายผิด (10)</button>
-            <button type="button" onclick="selectViolation('ทรงผมผิด',10)" data-vio="ทรงผมผิด" class="violation-btn bg-orange-100 hover:bg-orange-200 text-orange-800 p-2 rounded text-xs font-medium">ทรงผมผิด (10)</button>
-            <button type="button" onclick="selectViolation('ไม่ส่งงาน',10)" data-vio="ไม่ส่งงาน" class="violation-btn bg-orange-100 hover:bg-orange-200 text-orange-800 p-2 rounded text-xs font-medium">ไม่ส่งงาน (10)</button>
-            <button type="button" onclick="selectViolation('หนีเรียน',20)" data-vio="หนีเรียน" class="violation-btn bg-red-100 hover:bg-red-200 text-red-800 p-2 rounded text-xs font-medium">หนีเรียน (20)</button>
-            <button type="button" onclick="selectViolation('ใช้โทรศัพท์',15)" data-vio="ใช้โทรศัพท์" class="violation-btn bg-red-100 hover:bg-red-200 text-red-800 p-2 rounded text-xs font-medium">ใช้โทรศัพท์ (15)</button>
-            <button type="button" onclick="selectViolation('ทะเลาะวิวาท',50)" data-vio="ทะเลาะวิวาท" class="violation-btn bg-red-200 hover:bg-red-300 text-red-900 p-2 rounded text-xs font-medium col-span-2">ทะเลาะวิวาท (50)</button>
-            <button type="button" onclick="toggleOther()" id="otherBtn" class="violation-btn bg-gray-200 hover:bg-gray-300 text-gray-800 p-2 rounded text-xs font-medium col-span-2">อื่นๆ (ระบุเอง)</button>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-sm font-medium text-gray-700">ประเภทความผิด:</label>
+            <button type="button" onclick="openRulesModal()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">⚙️ ตั้งค่าเกณฑ์</button>
+          </div>
+          <div id="violationButtons" class="grid grid-cols-2 gap-2">
+            <!-- ปุ่มความผิดถูกสร้างจาก JavaScript -->
           </div>
           <div id="otherFields" class="hidden mt-2 space-y-2">
             <input type="text" id="otherName" placeholder="ระบุชื่อความผิด" class="w-full p-2 border border-gray-300 rounded">
@@ -153,6 +149,39 @@
     </div>
   </div>
 
+  <!-- ========== MODAL: ตั้งค่าเกณฑ์คะแนน ========== -->
+  <div id="rulesModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-start justify-center p-3 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full my-4">
+      <div class="sticky top-0 bg-white border-b border-gray-200 p-3 flex justify-between items-center rounded-t-2xl z-10">
+        <h3 class="text-base font-bold text-gray-800">⚙️ ตั้งค่าเกณฑ์การตัดคะแนน</h3>
+        <button onclick="closeRulesModal()" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-4">
+        <p class="text-xs text-gray-500 mb-3">เพิ่ม แก้ไข หรือลบประเภทความผิดและคะแนนที่ตัด เกณฑ์นี้จะใช้ในหน้าบันทึก</p>
+
+        <!-- ฟอร์มเพิ่ม/แก้ -->
+        <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3">
+          <div class="grid grid-cols-1 gap-2">
+            <input type="text" id="ruleName" placeholder="ชื่อความผิด เช่น มาสาย" class="w-full p-2 border border-gray-300 rounded text-sm">
+            <div class="flex gap-2">
+              <input type="number" id="rulePoints" placeholder="คะแนนที่ตัด" min="1" class="flex-1 p-2 border border-gray-300 rounded text-sm">
+              <button onclick="saveRule()" id="saveRuleBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium whitespace-nowrap">➕ เพิ่ม</button>
+            </div>
+          </div>
+          <input type="hidden" id="ruleEditIndex" value="">
+        </div>
+
+        <!-- รายการเกณฑ์ -->
+        <div id="rulesList" class="space-y-1.5 max-h-64 overflow-y-auto"></div>
+
+        <div class="flex gap-2 mt-4">
+          <button onclick="resetRulesDefault()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 rounded text-sm">↺ คืนค่าเริ่มต้น</button>
+          <button onclick="closeRulesModal()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded text-sm font-medium">เสร็จสิ้น</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="text-center text-white/90 text-xs mt-6 pb-4">
     <p class="mb-1">© พัฒนาโดย ครูรุ่งนิรันดร์ | สำหรับใช้ภายในโรงเรียนหนองสำโรงวิทยาเท่านั้น</p>
@@ -195,6 +224,19 @@ function loadAll() {
       document.getElementById('dateInput').valueAsDate = new Date();
     })
     .catch(function(e) { hideLoading(); toast(e.message, 'error'); });
+
+  // โหลดเกณฑ์คะแนนจาก Settings
+  GAS.call('getSettings', {})
+    .then(function(settings) {
+      if (settings && settings.conduct_rules) {
+        try {
+          const parsed = JSON.parse(settings.conduct_rules);
+          if (Array.isArray(parsed) && parsed.length > 0) violationRules = parsed;
+        } catch (e) { /* ใช้ค่า default */ }
+      }
+      renderViolationButtons();
+    })
+    .catch(function() { renderViolationButtons(); });
 }
 
 function fillStudentSelect() {
@@ -205,11 +247,43 @@ function fillStudentSelect() {
     filtered.map(s => `<option value="${s.id}">${s.classLevel || ''} เลขที่ ${s.no || ''} - ${s.fullName} (คะแนน: ${s.points || 100})</option>`).join('');
 }
 
+// ===== ระบบเกณฑ์คะแนน (Dynamic Rules) =====
+const DEFAULT_RULES = [
+  { name: 'มาสาย', points: 5 },
+  { name: 'แต่งกายผิด', points: 10 },
+  { name: 'ทรงผมผิด', points: 10 },
+  { name: 'ไม่ส่งงาน', points: 10 },
+  { name: 'หนีเรียน', points: 20 },
+  { name: 'ใช้โทรศัพท์', points: 15 },
+  { name: 'ทะเลาะวิวาท', points: 50 }
+];
+let violationRules = DEFAULT_RULES.slice();
+
+function colorForPoints(p) {
+  if (p >= 50) return 'bg-red-200 hover:bg-red-300 text-red-900';
+  if (p >= 20) return 'bg-red-100 hover:bg-red-200 text-red-800';
+  if (p >= 10) return 'bg-orange-100 hover:bg-orange-200 text-orange-800';
+  return 'bg-yellow-100 hover:bg-yellow-200 text-yellow-800';
+}
+
+// แสดงปุ่มความผิดในหน้าบันทึก
+function renderViolationButtons() {
+  const box = document.getElementById('violationButtons');
+  let html = violationRules.map(function(r) {
+    return `<button type="button" onclick="selectViolation('${r.name.replace(/'/g,"\\'")}',${r.points})" data-vio="${r.name}" class="violation-btn ${colorForPoints(r.points)} p-2 rounded text-xs font-medium">${r.name} (${r.points})</button>`;
+  }).join('');
+  // ปุ่มอื่นๆ
+  html += `<button type="button" onclick="toggleOther()" id="otherBtn" class="violation-btn bg-gray-200 hover:bg-gray-300 text-gray-800 p-2 rounded text-xs font-medium col-span-2">อื่นๆ (ระบุเอง)</button>`;
+  box.innerHTML = html;
+}
+
 function selectViolation(name, pts) {
   isOther = false;
   document.querySelectorAll('[data-vio]').forEach(b => b.classList.remove('active'));
-  document.querySelector(`[data-vio="${name}"]`).classList.add('active');
-  document.getElementById('otherBtn').classList.remove('active');
+  const btn = document.querySelector(`[data-vio="${name}"]`);
+  if (btn) btn.classList.add('active');
+  const ob = document.getElementById('otherBtn');
+  if (ob) ob.classList.remove('active');
   document.getElementById('otherFields').classList.add('hidden');
   document.getElementById('points').value = pts;
   document.getElementById('deductForm').dataset.violation = name;
@@ -226,6 +300,91 @@ function toggleOther() {
     document.getElementById('deductForm').dataset.violation = oName.value;
     document.getElementById('points').value = Number(oPts.value) || 0;
   };
+}
+
+// ===== Modal ตั้งค่าเกณฑ์ =====
+function openRulesModal() {
+  document.getElementById('rulesModal').classList.remove('hidden');
+  renderRulesList();
+}
+function closeRulesModal() {
+  document.getElementById('rulesModal').classList.add('hidden');
+  document.getElementById('ruleName').value = '';
+  document.getElementById('rulePoints').value = '';
+  document.getElementById('ruleEditIndex').value = '';
+  document.getElementById('saveRuleBtn').textContent = '➕ เพิ่ม';
+}
+
+function renderRulesList() {
+  const box = document.getElementById('rulesList');
+  if (violationRules.length === 0) {
+    box.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">ยังไม่มีเกณฑ์ กรุณาเพิ่ม</p>';
+    return;
+  }
+  box.innerHTML = violationRules.map(function(r, i) {
+    return `<div class="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+      <div class="flex items-center gap-2">
+        <span class="${colorForPoints(r.points)} px-2 py-0.5 rounded text-xs font-bold">-${r.points}</span>
+        <span class="text-sm text-gray-800">${r.name}</span>
+      </div>
+      <div class="flex gap-1">
+        <button onclick="editRule(${i})" class="text-blue-600 hover:text-blue-800 text-sm px-1">✏️</button>
+        <button onclick="deleteRule(${i})" class="text-red-600 hover:text-red-800 text-sm px-1">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function saveRule() {
+  const name = document.getElementById('ruleName').value.trim();
+  const points = Number(document.getElementById('rulePoints').value);
+  const editIdx = document.getElementById('ruleEditIndex').value;
+  if (!name) { toast('กรุณากรอกชื่อความผิด', 'warning'); return; }
+  if (!points || points < 1) { toast('กรุณากรอกคะแนนมากกว่า 0', 'warning'); return; }
+
+  if (editIdx !== '') {
+    violationRules[Number(editIdx)] = { name: name, points: points };
+  } else {
+    // กันชื่อซ้ำ
+    if (violationRules.some(r => r.name === name)) { toast('มีความผิดนี้อยู่แล้ว', 'warning'); return; }
+    violationRules.push({ name: name, points: points });
+  }
+  document.getElementById('ruleName').value = '';
+  document.getElementById('rulePoints').value = '';
+  document.getElementById('ruleEditIndex').value = '';
+  document.getElementById('saveRuleBtn').textContent = '➕ เพิ่ม';
+  renderRulesList();
+  persistRules();
+}
+
+function editRule(i) {
+  const r = violationRules[i];
+  document.getElementById('ruleName').value = r.name;
+  document.getElementById('rulePoints').value = r.points;
+  document.getElementById('ruleEditIndex').value = i;
+  document.getElementById('saveRuleBtn').textContent = '💾 บันทึก';
+}
+
+function deleteRule(i) {
+  if (!confirm('ลบเกณฑ์ "' + violationRules[i].name + '" ?')) return;
+  violationRules.splice(i, 1);
+  renderRulesList();
+  persistRules();
+}
+
+function resetRulesDefault() {
+  if (!confirm('คืนค่าเกณฑ์เริ่มต้นทั้งหมด?')) return;
+  violationRules = DEFAULT_RULES.slice();
+  renderRulesList();
+  persistRules();
+}
+
+// บันทึกเกณฑ์ลง Google Sheets (Settings) + render ปุ่มใหม่
+function persistRules() {
+  renderViolationButtons();
+  GAS.call('saveSettings', { conduct_rules: JSON.stringify(violationRules) })
+    .then(function() { toast('บันทึกเกณฑ์สำเร็จ', 'success'); })
+    .catch(function(e) { toast('บันทึกเกณฑ์ไม่สำเร็จ: ' + e.message, 'error'); });
 }
 
 function submitDeduct(e) {
