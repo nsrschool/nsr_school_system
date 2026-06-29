@@ -45,7 +45,7 @@
       <h1 class="text-xl md:text-3xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
         ⚠️ ระบบตัดคะแนนความประพฤติ
       </h1>
-      <p class="text-gray-600 text-xs md:text-sm mt-1">โรงเรียนหนองสำโรงวิทยา</p>
+      <p class="text-gray-600 text-xs md:text-sm mt-1">โรงเรียนหนองสำโรงวิทยา ปีการศึกษา 2568</p>
     </div>
   </div>
 
@@ -178,22 +178,22 @@ function toast(msg, type) {
   document.getElementById('toastContainer').appendChild(el);
   setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
 }
-function goHome() { window.location.href = 'index.html'; }
+function goHome() { window.location.href = 'hub.html'; }
 
 function loadAll() {
   showLoading();
   GAS.call('getAllInitialData', { systemType: 'conduct' })
-        .then(function(data) {
-    hideLoading();
-    webAppUrl = data.webAppUrl || '';
-    allStudents = data.students || [];
-    allRecords = data.records || [];
-    fillStudentSelect();
-    renderRecords();
-    updateStats();
-    document.getElementById('dateInput').valueAsDate = new Date();
-  })
-        .catch(function(e) { hideLoading(); toast(e.message, 'error'); });
+    .then(function(data) {
+      hideLoading();
+      webAppUrl = data.webAppUrl || '';
+      allStudents = data.students || [];
+      allRecords = data.records || [];
+      fillStudentSelect();
+      renderRecords();
+      updateStats();
+      document.getElementById('dateInput').valueAsDate = new Date();
+    })
+    .catch(function(e) { hideLoading(); toast(e.message, 'error'); });
 }
 
 function fillStudentSelect() {
@@ -229,9 +229,11 @@ function toggleOther() {
 
 function submitDeduct(e) {
   e.preventDefault();
+  if (allStudents.length === 0) { toast('ข้อมูลนักเรียนยังไม่พร้อม กรุณารอสักครู่...', 'warning'); return; }
   const sid = document.getElementById('studentSelect').value;
   if (!sid) { toast('เลือกนักเรียน', 'warning'); return; }
   const s = allStudents.find(x => x.id === sid);
+  if (!s) { toast('ไม่พบข้อมูลนักเรียนนี้ในระบบ', 'error'); return; }
   let vio = document.getElementById('deductForm').dataset.violation || '';
   let pts = Number(document.getElementById('points').value) || 0;
   if (isOther) {
@@ -239,21 +241,18 @@ function submitDeduct(e) {
     pts = Number(document.getElementById('otherPoints').value);
   }
   if (!vio || pts < 1) { toast('กรอกข้อมูลความผิดและคะแนนให้ครบ', 'warning'); return; }
+  const fullName = s.fullName || ((s.firstName || '') + ' ' + (s.lastName || '')).trim();
   const data = {
     date: document.getElementById('dateInput').value, studentId: sid,
-    studentName: s ? s.fullName : '', classLevel: s ? s.classLevel : '',
+    studentName: fullName, classLevel: s.classLevel || '',
     violationType: vio, description: document.getElementById('description').value, points: pts
   };
   const editId = document.getElementById('editId').value;
   showLoading('กำลังบันทึก...');
   const cb = function(r) { hideLoading(); toast(r.message, 'success'); resetForm(); reload(); };
   const err = function(e) { hideLoading(); toast(e.message, 'error'); };
-  if (editId) GAS.call('cd_updateRecord', { id: editId, data: data })
-        .then(cb)
-        .catch(err);
-  else GAS.call('cd_addRecord', { data: data })
-        .then(cb)
-        .catch(err);
+  if (editId) GAS.call('cd_updateRecord', { id: editId, data: data }).then(cb).catch(err);
+  else GAS.call('cd_addRecord', { data: data }).then(cb).catch(err);
 }
 
 function resetForm() {
@@ -270,11 +269,20 @@ function resetForm() {
 
 function reload() {
   GAS.call('getReportData', { systemType: 'conduct' })
-        .then(function(r) {
-    allRecords = r.records || []; allStudents = r.students || [];
-    fillStudentSelect(); renderRecords(); updateStats();
-  })
-        .catch(function(err){ console.error(err); });
+    .then(function(r) {
+      allRecords = r.records || []; allStudents = r.students || [];
+      fillStudentSelect(); renderRecords(); updateStats();
+    })
+    .catch(function(e){ console.error(e); });
+}
+
+function getStudentName(r) {
+  if (r.studentName && String(r.studentName).trim()) return r.studentName;
+  if (r.studentId) {
+    const s = allStudents.find(x => x.id === r.studentId);
+    if (s) return s.fullName || ((s.firstName || '') + ' ' + (s.lastName || '')).trim();
+  }
+  return '-';
 }
 
 function renderRecords() {
@@ -284,7 +292,7 @@ function renderRecords() {
     ? '<tr><td colspan="5" class="p-4 text-center text-gray-400">ยังไม่มีข้อมูล</td></tr>'
     : sorted.map(r => `<tr class="border-t hover:bg-gray-50">
         <td class="p-2">${r.date || '-'}</td>
-        <td class="p-2">${r.studentName}</td>
+        <td class="p-2">${getStudentName(r)}</td>
         <td class="p-2">${r.violationType}</td>
         <td class="p-2 text-center font-bold text-red-600">-${r.points}</td>
         <td class="p-2 text-center"><button onclick="editRec('${r.id}')" class="text-blue-600 mx-0.5">✏️</button><button onclick="delRec('${r.id}')" class="text-red-600 mx-0.5">🗑️</button></td>
@@ -292,7 +300,7 @@ function renderRecords() {
 
   // Top
   const scores = {};
-  allRecords.forEach(r => { if (r.studentName) scores[r.studentName] = (scores[r.studentName] || 0) + Number(r.points || 0); });
+  allRecords.forEach(r => { const nm = getStudentName(r); if (nm && nm !== '-') scores[nm] = (scores[nm] || 0) + Number(r.points || 0); });
   const top = Object.entries(scores).sort((a,b) => b[1] - a[1]).slice(0, 10);
   document.getElementById('topBody').innerHTML = top.length === 0
     ? '<tr><td colspan="3" class="p-4 text-center text-gray-400">-</td></tr>'
@@ -317,8 +325,8 @@ function delRec(id) {
   if (!confirm('ยืนยันการลบรายการนี้?')) return;
   showLoading();
   GAS.call('cd_deleteRecord', { id: id })
-        .then(function(r) { hideLoading(); toast(r.message, 'success'); reload(); })
-        .catch(function(e) { hideLoading(); toast(e.message, 'error'); });
+    .then(function(r) { hideLoading(); toast(r.message, 'success'); reload(); })
+    .catch(function(e) { hideLoading(); toast(e.message, 'error'); });
 }
 
 function updateStats() {
@@ -332,7 +340,7 @@ function updateStats() {
 
 function exportExcel() {
   const data = allRecords.map(r => ({
-    'วันที่': r.date, 'ชื่อ-นามสกุล': r.studentName, 'ชั้น': r.classLevel,
+    'วันที่': r.date, 'ชื่อ-นามสกุล': getStudentName(r), 'ชั้น': r.classLevel,
     'ประเภทความผิด': r.violationType, 'รายละเอียด': r.description, 'คะแนนที่ตัด': r.points
   }));
   const ws = XLSX.utils.json_to_sheet(data);
