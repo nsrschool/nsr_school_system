@@ -52,23 +52,11 @@
   </div>
 
   <!-- Action Bar -->
-  <div class="bg-white/95 backdrop-blur rounded-xl shadow-lg p-4 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+  <div class="bg-white/95 backdrop-blur rounded-xl shadow-lg p-4 mb-6">
     <p class="text-gray-700 text-xs md:text-sm flex items-center gap-2">
       <span class="text-yellow-500 text-lg">💡</span>
       ข้อมูลถูกบันทึกบน Google Sheets ของคุณโดยอัตโนมัติ สามารถเข้าใช้งานได้จากทุกอุปกรณ์
     </p>
-    <div class="flex flex-wrap gap-2">
-      <button onclick="doBackup()" class="bg-green-600 hover:bg-green-700 text-white text-xs md:text-sm font-medium px-3 py-2 rounded-lg shadow-md transition">
-        💾 สำรองข้อมูล (Backup)
-      </button>
-      <button onclick="document.getElementById('importFile').click()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm font-medium px-3 py-2 rounded-lg shadow-md transition">
-        📥 นำเข้าข้อมูล (Import)
-      </button>
-      <input type="file" id="importFile" accept=".json" class="hidden" onchange="doImport(event)">
-      <button onclick="openClearModal()" class="bg-red-600 hover:bg-red-700 text-white text-xs md:text-sm font-medium px-3 py-2 rounded-lg shadow-md transition">
-        🗑️ ล้างข้อมูลทั้งหมด
-      </button>
-    </div>
   </div>
 
   <!-- Navigation Tabs -->
